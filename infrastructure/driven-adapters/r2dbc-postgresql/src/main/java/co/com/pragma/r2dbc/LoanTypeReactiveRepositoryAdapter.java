@@ -5,10 +5,12 @@ import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.r2dbc.entities.LoanTypeEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import org.reactivecommons.utils.ObjectMapper;
+import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+@Repository
 public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations<
         LoanType,
         LoanTypeEntity,

@@ -1,9 +1,6 @@
 package co.com.pragma.r2dbc.entities;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -27,7 +24,7 @@ public class LoanTypeEntity {
     @Column("amount_min")
     private BigDecimal amountMin;
 
-    @Column("amount_mix")
+    @Column("amount_max")
     private BigDecimal amountMax;
 
     @Column("interest_rate")
