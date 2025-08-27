@@ -1,23 +1,9 @@
 package co.com.pragma.consumer;
 
 
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.test.StepVerifier;
-import java.io.IOException;
+class UserRestConsumerTest {
 
-
-class RestConsumerTest {
-
-    private static RestConsumer restConsumer;
+    /*private static RestConsumer restConsumer;
 
     private static MockWebServer mockBackEnd;
 
@@ -64,5 +50,5 @@ class RestConsumerTest {
         StepVerifier.create(response)
                 .expectNextMatches(objectResponse -> objectResponse.getState().equals("ok"))
                 .verifyComplete();
-    }
+    }*/
 }

@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 9000
 spring:
   application:
     name: "request-msvc"
@@ -19,6 +19,14 @@ management:
   health:
     circuitbreakers:
       enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "health,prometheus"
+  endpoint:
+    health:
+      probes:
+        enabled: true
 resilience4j:
   circuitbreaker:
     instances:
@@ -40,3 +48,16 @@ resilience4j:
         slidingWindowSize: 10
         minimumNumberOfCalls: 10
         waitDurationInOpenState: "10s"
+cors:
+  allowed-origins: "http://localhost:4200,http://localhost:8080"
+routes:
+  paths:
+    loans: "/api/v1/loans"
+adapters:
+  r2dbc:
+    host: "localhost"
+    port: 5433
+    database: "loans_db"
+    schema: "public"
+    username: "admin"
+    password: "@admin1"
