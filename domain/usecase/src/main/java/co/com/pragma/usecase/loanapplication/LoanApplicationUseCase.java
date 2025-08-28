@@ -21,7 +21,7 @@ public class LoanApplicationUseCase {
     private final LoanTypeRepository loanTypeRepository;
     private final StatusRepository statusRepository;
     private final LoanApplicationRepository loanApplicationRepository;
-    private final UserRestConsumerPort userRestConsumerPort;
+    private final UserRestConsumerPort userRestConsumer;
     private final LoggerPort logger;
 
     public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication) {
@@ -40,7 +40,7 @@ public class LoanApplicationUseCase {
     }
 
     private Mono<LoanApplication> searchUserAndAssignEmail(LoanApplication loanApplication) {
-        return userRestConsumerPort.findUserByDocumentIdentity(loanApplication.getDocumentNumber())
+        return userRestConsumer.findUserByDocumentIdentity(loanApplication.getDocumentNumber())
                 .switchIfEmpty(Mono.error(new UserNotFoundException("Usuario no encontrado")))
                 .map(user -> {
                             loanApplication.setEmail(user.getEmail());
@@ -76,8 +76,8 @@ public class LoanApplicationUseCase {
     private Mono<LoanApplication> validateLoanApplicationStateAndType(LoanApplication loanApp) {
         return loanApplicationRepository.existsUserAndLoanTypeAndStatus(loanApp.getDocumentNumber(),
                         loanApp.getLoanType().getId(), loanApp.getStatus().getId())
-                .flatMap(isValid -> {
-                            if (Boolean.TRUE.equals(isValid)) {
+                .flatMap(isLoanType -> {
+                            if (Boolean.TRUE.equals(isLoanType)) {
                                 return Mono.error(new LoanRequestStatusAndTypeMismatchException(
                                         "El usuario ya cuenta con una solicitud de préstamo en proceso del mismo tipo"));
                             }
