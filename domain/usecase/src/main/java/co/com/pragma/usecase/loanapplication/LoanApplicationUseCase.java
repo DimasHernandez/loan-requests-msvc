@@ -1,9 +1,6 @@
 package co.com.pragma.usecase.loanapplication;
 
-import co.com.pragma.model.exceptions.AmountOutOfRangeException;
-import co.com.pragma.model.exceptions.LoanTypeNotFoundException;
-import co.com.pragma.model.exceptions.StatusNotFoundException;
-import co.com.pragma.model.exceptions.UserNotFoundException;
+import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.loanapplication.gateways.LoggerPort;
@@ -31,6 +28,7 @@ public class LoanApplicationUseCase {
         return searchUserAndAssignEmail(loanApplication)
                 .flatMap(this::assignLoanType)
                 .flatMap(this::assignStatus)
+                .flatMap(this::validateLoanApplicationStateAndType)
                 .flatMap(loanApplicationRepository::saveLoanApplication)
                 .map(savedLoanApp -> {
                     loanApplication.setId(savedLoanApp.getId());
@@ -58,6 +56,9 @@ public class LoanApplicationUseCase {
                     if (!isAmountValid(loanApplication.getAmount(), loanType)) {
                         return Mono.error(new AmountOutOfRangeException("El monto no es valido"));
                     }
+                    if (!isTermValid(loanApplication.getTermMonth(), loanType)) {
+                        return Mono.error(new TermOutOfRangeException("El plazo establecido no es valido"));
+                    }
                     loanApplication.setLoanType(loanType);
                     return Mono.just(loanApplication);
                 });
@@ -72,8 +73,25 @@ public class LoanApplicationUseCase {
                 });
     }
 
+    private Mono<LoanApplication> validateLoanApplicationStateAndType(LoanApplication loanApp) {
+        return loanApplicationRepository.existsUserAndLoanTypeAndStatus(loanApp.getDocumentNumber(),
+                        loanApp.getLoanType().getId(), loanApp.getStatus().getId())
+                .flatMap(isValid -> {
+                            if (Boolean.TRUE.equals(isValid)) {
+                                return Mono.error(new LoanRequestStatusAndTypeMismatchException(
+                                        "El usuario ya cuenta con una solicitud de préstamo en proceso del mismo tipo"));
+                            }
+                            return Mono.just(loanApp);
+                        }
+                );
+    }
+
     private boolean isAmountValid(BigDecimal amount, LoanType loanType) {
         return amount.compareTo(loanType.getAmountMin()) >= 0 &&
                 amount.compareTo(loanType.getAmountMax()) <= 0;
+    }
+
+    private boolean isTermValid(Integer term, LoanType loanType) {
+        return term >= loanType.getTermMonthMin() && term <= loanType.getTermMonthMax();
     }
 }

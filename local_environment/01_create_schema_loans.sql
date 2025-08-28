@@ -16,16 +16,18 @@ CREATE TABLE IF NOT EXISTS public.loans_types (
     name                 VARCHAR(150) NOT NULL UNIQUE,
     amount_min           DECIMAL(10,2),
     amount_max           DECIMAL(10,2),
+    term_month_min       INTEGER NOT NULL CHECK (term_month_min > 0),
+    term_month_max       INTEGER NOT NULL CHECK (term_month_max > 0),
     interest_rate        DECIMAL(5,4),
     automatic_validation BOOLEAN DEFAULT FALSE
 );
 
-INSERT INTO public.loans_types (name, amount_min, amount_max, interest_rate, automatic_validation)
-VALUES  ('FREE_INVESTMENT',        500000.00, 99000000.00, 0.0235, FALSE),
-        ('PERSONAL_LOAN',      300000.00, 60000000.00, 0.0210, FALSE),
-        ('VEHICLE_LOAN',     5000000.00, 80000000.00, 0.0180, TRUE),
-        ('PAYROLL_LOAN',   1000000.00, 60000000.00, 0.0150, TRUE),
-        ('MICROCREDIT',           20000.00, 5000000.00, 0.0250, TRUE);
+INSERT INTO public.loans_types (name, amount_min, amount_max, term_month_min, term_month_max, interest_rate, automatic_validation)
+VALUES  ('FREE_INVESTMENT',        500000.00, 99000000.00, 10, 240, 0.0235, FALSE),
+        ('PERSONAL_LOAN',      300000.00, 80000000.00, 4, 96, 0.0210, FALSE),
+        ('VEHICLE_LOAN',     5000000.00, 60000000.00, 3, 72, 0.0180, TRUE),
+        ('PAYROLL_LOAN',   1000000.00, 50000000.00, 2,  60, 0.0150, TRUE),
+        ('MICROCREDIT',           20000.00, 5000000.00, 1,24 ,  0.0250, TRUE);
 
 CREATE TABLE IF NOT EXISTS public.loan_applications (
     loan_app_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),

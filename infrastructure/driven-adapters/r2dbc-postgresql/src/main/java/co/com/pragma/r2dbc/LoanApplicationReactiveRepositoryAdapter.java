@@ -66,4 +66,9 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
     public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication) {
         return super.save(loanApplication);
     }
+
+    @Override
+    public Mono<Boolean> existsUserAndLoanTypeAndStatus(String documentNumber, UUID loanTypeId, UUID statusId) {
+        return repository.existsByDocumentNumberAndLoanTypeIdAndStatusId(documentNumber, loanTypeId, statusId);
+    }
 }

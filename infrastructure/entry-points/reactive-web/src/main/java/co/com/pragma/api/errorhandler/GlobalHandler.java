@@ -1,9 +1,6 @@
 package co.com.pragma.api.errorhandler;
 
-import co.com.pragma.model.exceptions.AmountOutOfRangeException;
-import co.com.pragma.model.exceptions.LoanTypeNotFoundException;
-import co.com.pragma.model.exceptions.StatusNotFoundException;
-import co.com.pragma.model.exceptions.UserNotFoundException;
+import co.com.pragma.model.exceptions.*;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -76,6 +73,24 @@ public class GlobalHandler implements WebExceptionHandler {
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
                                     false, "AmountOutOfRangeException")));
+        }
+
+        if (ex instanceof TermOutOfRangeException) {
+            response.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY);
+            return response.writeWith(
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                                    ex.getMessage()))
+                            .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
+                                    false, "TermOutOfRangeException")));
+        }
+
+        if (ex instanceof LoanRequestStatusAndTypeMismatchException) {
+            response.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY);
+            return response.writeWith(
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                                    ex.getMessage()))
+                            .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
+                                    false, "LoanRequestStatusAndTypeMismatchException")));
         }
 
         if (ex instanceof StatusNotFoundException) {

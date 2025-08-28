@@ -21,6 +21,10 @@ public class LoanType {
 
     private BigDecimal amountMax;
 
+    private Integer termMonthMin;
+
+    private Integer termMonthMax;
+
     private BigDecimal interestRate;
 
     private boolean automaticValidation;
