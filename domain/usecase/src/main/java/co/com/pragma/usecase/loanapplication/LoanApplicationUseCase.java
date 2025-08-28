@@ -1,6 +1,7 @@
 package co.com.pragma.usecase.loanapplication;
 
-import co.com.pragma.model.exceptions.LoandTypeNotFoundException;
+import co.com.pragma.model.exceptions.AmountOutOfRangeException;
+import co.com.pragma.model.exceptions.LoanTypeNotFoundException;
 import co.com.pragma.model.exceptions.StatusNotFoundException;
 import co.com.pragma.model.exceptions.UserNotFoundException;
 import co.com.pragma.model.loanapplication.LoanApplication;
@@ -34,7 +35,8 @@ public class LoanApplicationUseCase {
                 .map(savedLoanApp -> {
                     loanApplication.setId(savedLoanApp.getId());
                     return loanApplication;
-                }).doOnSuccess(loanApp ->
+                })
+                .doOnSuccess(loanApp ->
                         logger.info("Loan application registered. Status: {}, Document: {}", DEFAULT_STATUS_LOAN,
                                 loanApp.getDocumentNumber()));
     }
@@ -51,10 +53,10 @@ public class LoanApplicationUseCase {
 
     private Mono<LoanApplication> assignLoanType(LoanApplication loanApplication) {
         return loanTypeRepository.findByName(loanApplication.getLoanType().getName())
-                .switchIfEmpty(Mono.error(new LoandTypeNotFoundException("Tipo de prestamo no encontrado")))
+                .switchIfEmpty(Mono.error(new LoanTypeNotFoundException("Tipo de prestamo no encontrado")))
                 .flatMap(loanType -> {
                     if (!isAmountValid(loanApplication.getAmount(), loanType)) {
-                        return Mono.error(new IllegalArgumentException("El monto no es valido"));
+                        return Mono.error(new AmountOutOfRangeException("El monto no es valido"));
                     }
                     loanApplication.setLoanType(loanType);
                     return Mono.just(loanApplication);

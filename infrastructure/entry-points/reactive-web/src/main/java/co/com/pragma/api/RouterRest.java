@@ -47,8 +47,11 @@ public class RouterRest {
                                     content = @Content(schema = @Schema(implementation = LoanRequest.class))
                             ),
                             responses = {
-                                    @ApiResponse(responseCode = "200", description = "Loan registered successfully",
-                                            content = @Content(schema = @Schema(implementation = LoanResponse.class)))
+                                    @ApiResponse(responseCode = "201", description = "Loan registered successfully",
+                                            content = @Content(schema = @Schema(implementation = LoanResponse.class))),
+
+                                    @ApiResponse(responseCode = "422", description = "validation failed",
+                                            content = @Content(schema = @Schema(example = "{ \"error\": \"Fallo validacion\", \"status\": \"422\", \"detail\": \"El documento de identidad es obligatorio\" }")))
                             }
                     )
             )
