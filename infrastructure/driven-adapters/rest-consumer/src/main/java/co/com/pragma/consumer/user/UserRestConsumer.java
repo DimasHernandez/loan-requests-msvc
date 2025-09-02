@@ -26,6 +26,7 @@ public class UserRestConsumer implements UserRestConsumerPort {
     @CircuitBreaker(name = "findUserByDocumentIdentity")
     @Override
     public Mono<User> findUserByDocumentIdentity(String documentNumber) {
+
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/users/{documentNumber}")
                         .build(documentNumber)

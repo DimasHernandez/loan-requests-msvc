@@ -22,11 +22,11 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 
 @Configuration
 @RequiredArgsConstructor
-public class RouterRest {
+public class LoanRouterRest {
 
     private final LoanPath loanPath;
 
-    private final Handler loanHandler;
+    private final LoanHandler loanHandler;
 
     @Bean
     @RouterOperations({
@@ -34,7 +34,7 @@ public class RouterRest {
                     path = "/api/v1/loans",
                     produces = {"application/json"},
                     method = RequestMethod.POST,
-                    beanClass = Handler.class,
+                    beanClass = LoanHandler.class,
                     beanMethod = "listenCreateLoanApplication",
                     operation = @Operation(
                             operationId = "createLoanApplication",
@@ -56,7 +56,7 @@ public class RouterRest {
                     )
             )
     })
-    public RouterFunction<ServerResponse> routerFunction(Handler handler) {
-        return route(POST(loanPath.getLoans()), loanHandler::listenCreateLoanApplication);
+    public RouterFunction<ServerResponse> routerFunction(LoanHandler loanHandler) {
+        return route(POST(loanPath.getLoans()), this.loanHandler::listenCreateLoanApplication);
     }
 }
