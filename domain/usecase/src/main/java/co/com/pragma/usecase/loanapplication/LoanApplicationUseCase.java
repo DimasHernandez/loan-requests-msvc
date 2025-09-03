@@ -24,8 +24,8 @@ public class LoanApplicationUseCase {
     private final UserRestConsumerPort userRestConsumer;
     private final LoggerPort logger;
 
-    public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication) {
-        return searchUserAndAssignEmail(loanApplication)
+    public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication, String email, String token) {
+        return searchUserAndAssignEmail(loanApplication, email, token)
                 .flatMap(this::assignLoanType)
                 .flatMap(this::assignStatus)
                 .flatMap(this::validateLoanApplicationStateAndType)
@@ -39,9 +39,11 @@ public class LoanApplicationUseCase {
                                 loanApp.getDocumentNumber()));
     }
 
-    private Mono<LoanApplication> searchUserAndAssignEmail(LoanApplication loanApplication) {
-        return userRestConsumer.findUserByDocumentIdentity(loanApplication.getDocumentNumber())
+    private Mono<LoanApplication> searchUserAndAssignEmail(LoanApplication loanApplication, String email, String token) {
+        return userRestConsumer.findUserByEmail(email, token)
                 .switchIfEmpty(Mono.error(new UserNotFoundException("Usuario no encontrado")))
+                .filter(user -> user.getDocumentNumber().equals(loanApplication.getDocumentNumber()))
+                .switchIfEmpty(Mono.error(new AccessDeniedException("No puedes crear préstamos a nombre de otro usuario")))
                 .map(user -> {
                             loanApplication.setEmail(user.getEmail());
                             return loanApplication;

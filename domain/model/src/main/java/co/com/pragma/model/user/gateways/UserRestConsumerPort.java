@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 public interface UserRestConsumerPort {
 
-    Mono<User> findUserByDocumentIdentity(String documentNumber);
+    Mono<User> findUserByEmail(String email, String token);
 }

@@ -61,3 +61,6 @@ adapters:
     schema: "public"
     username: "admin"
     password: "@admin1"
+security:
+  jwt:
+    secretKey: "VC_ayQoxqq_7BcqwcYplfPc5Au38nbm8Z_u5ReEHVE0="

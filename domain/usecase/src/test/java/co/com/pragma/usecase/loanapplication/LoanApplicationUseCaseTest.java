@@ -11,11 +11,11 @@ import co.com.pragma.model.status.gateways.StatusRepository;
 import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.enums.DocumentType;
 import co.com.pragma.model.user.gateways.UserRestConsumerPort;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
@@ -46,20 +46,27 @@ class LoanApplicationUseCaseTest {
     @Mock
     private LoggerPort logger;
 
-    @InjectMocks
+
     private LoanApplicationUseCase loanApplicationUseCase;
+
+    @BeforeEach
+    void setup() {
+        loanApplicationUseCase = new LoanApplicationUseCase(loanTypeRepository, statusRepository, loanApplicationRepository,
+                userRestConsumer, logger);
+    }
 
     @Test
     void shouldSaveLoanApplication() {
         // Arrange
         LoanApplication loanApp = loanApplicationMock();
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
         User user = userMock();
         LoanType loanType = loanTypeMock();
         Status status = statusMock();
 
-
         // Mock reactive repositories
-        when(userRestConsumer.findUserByDocumentIdentity(any(String.class))).thenReturn(Mono.just(user));
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
         when(loanTypeRepository.findByName(any(String.class))).thenReturn(Mono.just(loanType));
         when(statusRepository.findByName(any(String.class))).thenReturn(Mono.just(status));
         when(loanApplicationRepository.existsUserAndLoanTypeAndStatus(any(String.class), any(UUID.class), any(UUID.class)))
@@ -67,7 +74,7 @@ class LoanApplicationUseCaseTest {
         when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class))).thenReturn(Mono.just(loanApp));
 
         // Act
-        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp);
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
 
         // Assert
         StepVerifier.create(result)
@@ -81,12 +88,14 @@ class LoanApplicationUseCaseTest {
     void shouldReturnErrorWhenUserNotFound() {
         // Arrange
         LoanApplication loanApp = loanApplicationMock();
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
 
         // Mock reactive repositories
-        when(userRestConsumer.findUserByDocumentIdentity(any(String.class))).thenReturn(Mono.empty());
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.empty());
 
         // Act
-        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp);
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
 
         // Assert
         StepVerifier.create(result)
@@ -97,17 +106,42 @@ class LoanApplicationUseCaseTest {
     }
 
     @Test
-    void shouldReturnErrorWhenLoanTypeNotFound() {
+    void shouldReturnErrorWhenUserWantsToCreateLoanInAnotherPerson() {
         // Arrange
         LoanApplication loanApp = loanApplicationMock();
+        loanApp.setDocumentNumber("1111");
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
         User user = userMock();
 
         // Mock reactive repositories
-        when(userRestConsumer.findUserByDocumentIdentity(any(String.class))).thenReturn(Mono.just(user));
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
+
+        // Act
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable ->
+                        throwable instanceof AccessDeniedException &&
+                                throwable.getMessage().equals("No puedes crear préstamos a nombre de otro usuario"))
+                .verify();
+    }
+
+    @Test
+    void shouldReturnErrorWhenLoanTypeNotFound() {
+        // Arrange
+        LoanApplication loanApp = loanApplicationMock();
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
+        User user = userMock();
+
+        // Mock reactive repositories
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
         when(loanTypeRepository.findByName(any(String.class))).thenReturn(Mono.empty());
 
         // Act
-        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp);
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
 
         // Assert
         StepVerifier.create(result)
@@ -122,16 +156,18 @@ class LoanApplicationUseCaseTest {
     void shouldReturnErrorWhenAmountIsInvalid(String amount) {
         // Arrange
         LoanApplication loanApp = loanApplicationMock();
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
         loanApp.setAmount(new BigDecimal(amount));
         LoanType loanType = loanTypeMock();
         User user = userMock();
 
         // Mock reactive repositories
-        when(userRestConsumer.findUserByDocumentIdentity(any(String.class))).thenReturn(Mono.just(user));
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
         when(loanTypeRepository.findByName(any(String.class))).thenReturn(Mono.just(loanType));
 
         // Act
-        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp);
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
 
         // Assert
         StepVerifier.create(result)
@@ -146,16 +182,18 @@ class LoanApplicationUseCaseTest {
     void shouldReturnErrorWhenTermIsInvalid(Integer termMont) {
         // Arrange
         LoanApplication loanApp = loanApplicationMock();
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
         loanApp.setTermMonth(termMont);
         LoanType loanType = loanTypeMock();
         User user = userMock();
 
         // Mock reactive repositories
-        when(userRestConsumer.findUserByDocumentIdentity(any(String.class))).thenReturn(Mono.just(user));
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
         when(loanTypeRepository.findByName(any(String.class))).thenReturn(Mono.just(loanType));
 
         // Act
-        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp);
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
 
         // Assert
         StepVerifier.create(result)
@@ -169,16 +207,18 @@ class LoanApplicationUseCaseTest {
     void shouldReturnErrorWhenStatusNotFound() {
         // Arrange
         LoanApplication loanApp = loanApplicationMock();
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
         User user = userMock();
         LoanType loanType = loanTypeMock();
 
         // Mock reactive repositories
-        when(userRestConsumer.findUserByDocumentIdentity(any(String.class))).thenReturn(Mono.just(user));
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
         when(loanTypeRepository.findByName(any(String.class))).thenReturn(Mono.just(loanType));
         when(statusRepository.findByName(any(String.class))).thenReturn(Mono.empty());
 
         // Act
-        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp);
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
 
         // Assert
         StepVerifier.create(result)
@@ -192,19 +232,21 @@ class LoanApplicationUseCaseTest {
     void shouldReturnErrorWhenExistsUserAndLoanTypeAndStatus() {
         // Arrange
         LoanApplication loanApp = loanApplicationMock();
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
         User user = userMock();
         LoanType loanType = loanTypeMock();
         Status status = statusMock();
 
         // Mock reactive repositories
-        when(userRestConsumer.findUserByDocumentIdentity(any(String.class))).thenReturn(Mono.just(user));
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
         when(loanTypeRepository.findByName(any(String.class))).thenReturn(Mono.just(loanType));
         when(statusRepository.findByName(any(String.class))).thenReturn(Mono.just(status));
         when(loanApplicationRepository.existsUserAndLoanTypeAndStatus(any(String.class), any(UUID.class), any(UUID.class)))
                 .thenReturn(Mono.just(true));
 
         // Act
-        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp);
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
 
         // Assert
         StepVerifier.create(result)
@@ -261,6 +303,12 @@ class LoanApplicationUseCaseTest {
                 .phoneNumber("3124367589")
                 .baseSalary(2200000)
                 .build();
+    }
+
+    private String tokenMock() {
+        return "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlzcyI6ImF1dGhlbnRpY2F0aW9uLW1zdmMiLpYXQiOjE3" +
+                "NTY4NTg3NjksImV4cCI6MTc1Njg1OTY2OSwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsInJvbGUiOiJBRE1JTiJ9." +
+                "xPetZo8ZwDf4Z5rs788DW42Uq0JALHTcoewXS1izqw";
     }
 
 }

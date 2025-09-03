@@ -33,7 +33,7 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof ConstraintViolationException) {
             response.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY);
             return response.writeWith(
-                    Mono.just(toBuffer(response, VALIDATION_FAILED, HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                    Mono.just(toBuffer(response, VALIDATION_FAILED, ErrorCode.FIELD_EMPTY.getCode(),
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
                                     false, "ConstraintViolationException")));
@@ -42,7 +42,7 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof WebExchangeBindException) {
             response.setStatusCode(HttpStatus.BAD_REQUEST);
             return response.writeWith(
-                    Mono.just(toBuffer(response, VALIDATION_FAILED, HttpStatus.BAD_REQUEST.value(),
+                    Mono.just(toBuffer(response, VALIDATION_FAILED, ErrorCode.BAD_REQUEST.getCode(),
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.BAD_REQUEST,
                                     false, "WebExchangeBindException")));
@@ -51,7 +51,7 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof UserNotFoundException) {
             response.setStatusCode(HttpStatus.NOT_FOUND);
             return response.writeWith(
-                    Mono.just(toBuffer(response, BUSINESS_ERROR, HttpStatus.NOT_FOUND.value(),
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, ErrorCode.USER_NOT_FOUND.getCode(),
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.NOT_FOUND,
                                     false, "UserNotFoundException")));
@@ -60,7 +60,7 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof LoanTypeNotFoundException) {
             response.setStatusCode(HttpStatus.NOT_FOUND);
             return response.writeWith(
-                    Mono.just(toBuffer(response, BUSINESS_ERROR, HttpStatus.NOT_FOUND.value(),
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, ErrorCode.LOAN_TYPE_NOT_FOUND.getCode(),
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.NOT_FOUND,
                                     false, "LoanTypeNotFoundException")));
@@ -69,7 +69,7 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof AmountOutOfRangeException) {
             response.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY);
             return response.writeWith(
-                    Mono.just(toBuffer(response, BUSINESS_ERROR, HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, ErrorCode.AMOUNT_OUT_RANGE.getCode(),
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
                                     false, "AmountOutOfRangeException")));
@@ -78,7 +78,7 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof TermOutOfRangeException) {
             response.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY);
             return response.writeWith(
-                    Mono.just(toBuffer(response, BUSINESS_ERROR, HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, ErrorCode.TERM_OUT_RANGE.getCode(),
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
                                     false, "TermOutOfRangeException")));
@@ -87,7 +87,7 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof LoanRequestStatusAndTypeMismatchException) {
             response.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY);
             return response.writeWith(
-                    Mono.just(toBuffer(response, BUSINESS_ERROR, HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, ErrorCode.LOAN_REQUEST_STATUS_MISMATCH.getCode(),
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
                                     false, "LoanRequestStatusAndTypeMismatchException")));
@@ -96,9 +96,18 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof StatusNotFoundException) {
             response.setStatusCode(HttpStatus.NOT_FOUND);
             return response.writeWith(
-                    Mono.just(toBuffer(response, BUSINESS_ERROR, HttpStatus.NOT_FOUND.value(),
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, ErrorCode.STATUS_NOT_FOUND.getCode(),
                                     ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.NOT_FOUND,
+                                    false, "StatusNotFoundException")));
+        }
+
+        if (ex instanceof AccessDeniedException) {
+            response.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY);
+            return response.writeWith(
+                    Mono.just(toBuffer(response, VALIDATION_FAILED, ErrorCode.ACCESS_DENIED.getCode(),
+                                    ex.getMessage()))
+                            .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
                                     false, "StatusNotFoundException")));
         }
 
@@ -112,23 +121,24 @@ public class GlobalHandler implements WebExceptionHandler {
         if (ex instanceof WebClientRequestException) {
             response.setStatusCode(HttpStatus.SERVICE_UNAVAILABLE);
             return response.writeWith(
-                    Mono.just(toBuffer(response, "Internal Server Error", HttpStatus.SERVICE_UNAVAILABLE.value(), ex.getMessage()))
+                    Mono.just(toBuffer(response, "Internal Server Error", ErrorCode.SERVICE_UNAVAILABLE.getCode(),
+                                    ex.getMessage()))
                             .doOnNext(buffer -> logException(exchange, ex, HttpStatus.SERVICE_UNAVAILABLE,
                                     false, "Service Unavailable")));
         }
 
         response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
         return response.writeWith(
-                Mono.just(toBuffer(response, "Internal error", HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                Mono.just(toBuffer(response, "Internal error", ErrorCode.GENERIC_SERVER_ERROR.getCode(),
                                 ex.getMessage()))
                         .doOnNext(buffer -> logException(exchange, ex, HttpStatus.INTERNAL_SERVER_ERROR,
                                 true, "Internal Server Error")));
     }
 
-    private DataBuffer toBuffer(ServerHttpResponse response, String error, int status, String detail) {
+    private DataBuffer toBuffer(ServerHttpResponse response, String error, String code, String detail) {
         String json = "{"
                 + "\"error\":\"" + error + "\","
-                + "\"status\":\"" + status + "\","
+                + "\"code\":\"" + code + "\","
                 + "\"detail\":\"" + detail + "\""
                 + "}";
         return response.bufferFactory().wrap(json.getBytes(StandardCharsets.UTF_8));

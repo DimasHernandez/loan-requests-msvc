@@ -1,6 +1,6 @@
 package co.com.pragma.consumer.user;
 
-import co.com.pragma.consumer.exception.ServiceInavailableException;
+import co.com.pragma.consumer.exception.ServiceUnavailableException;
 import co.com.pragma.consumer.user.errorclient.ErrorClient;
 import co.com.pragma.consumer.user.mapper.UserMapper;
 import co.com.pragma.model.exceptions.UserNotFoundException;
@@ -23,13 +23,15 @@ public class UserRestConsumer implements UserRestConsumerPort {
 
     private final UserMapper userMapper;
 
-    @CircuitBreaker(name = "findUserByDocumentIdentity")
+    @CircuitBreaker(name = "findUserByEmail")
     @Override
-    public Mono<User> findUserByDocumentIdentity(String documentNumber) {
+    public Mono<User> findUserByEmail(String email, String token) {
+
         return webClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/api/v1/users/{documentNumber}")
-                        .build(documentNumber)
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/users/email/{email}")
+                        .build(email)
                 )
+                .headers(httpHeaders -> httpHeaders.setBearerAuth(token))
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxClientError)
                 .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxServerError)
@@ -59,7 +61,7 @@ public class UserRestConsumer implements UserRestConsumerPort {
 
                     HttpStatusCode status = clientResponse.statusCode();
                     if (status == HttpStatus.SERVICE_UNAVAILABLE) {
-                        return Mono.error(new ServiceInavailableException(errorClient.detail()));
+                        return Mono.error(new ServiceUnavailableException(errorClient.detail()));
                     }
                     return Mono.error(new RuntimeException(errorClient.detail()));
                 });
