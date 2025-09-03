@@ -48,18 +48,8 @@ public class JwtProvider implements JwtGateway {
     }
 
     @Override
-    public String extractUserId(String token) {
-        return extractClaims(token).get("userId", String.class);
-    }
-
-    @Override
     public String extractUserEmail(String token) {
         return extractClaims(token).get("email", String.class);
-    }
-
-    @Override
-    public String extractUserDocumentNumber(String token) {
-        return extractClaims(token).get("documentNumber", String.class);
     }
 
     @Override

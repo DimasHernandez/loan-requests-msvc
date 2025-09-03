@@ -29,7 +29,6 @@ public class LoanHandler {
 
     public Mono<ServerResponse> listenCreateLoanApplication(ServerRequest serverRequest) {
         URI uri = serverRequest.uri();
-
         return Mono.zip(
                         serverRequest.bodyToMono(LoanRequest.class)
                                 .flatMap(loanRequest -> {
@@ -45,13 +44,11 @@ public class LoanHandler {
                             LoanRequest loanRequest = tuple.getT1();
                             Authentication auth = tuple.getT2();
 
-                            String documentNumber = (String) auth.getDetails();
-
-                            System.out.println("Print handler document N°: " + documentNumber);//TODO delete this
-
+                            String email = (String) auth.getPrincipal();
+                            String token = (String) auth.getCredentials();
                             return loanApplicationUseCase.saveLoanApplication(
                                     loanMapper.toDomain(loanRequest),
-                                    documentNumber
+                                    email, token
                             );
                         }
                 )

@@ -1,6 +1,5 @@
 package co.com.pragma.usecase.loanapplication;
 
-import co.com.pragma.model.auth.gateways.JwtGateway;
 import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
@@ -23,11 +22,10 @@ public class LoanApplicationUseCase {
     private final StatusRepository statusRepository;
     private final LoanApplicationRepository loanApplicationRepository;
     private final UserRestConsumerPort userRestConsumer;
-    private final JwtGateway jwtGateway;
     private final LoggerPort logger;
 
-    public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication, String documentNumberFromToken) {
-        return searchUserAndAssignEmail(loanApplication, documentNumberFromToken)
+    public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication, String email, String token) {
+        return searchUserAndAssignEmail(loanApplication, email, token)
                 .flatMap(this::assignLoanType)
                 .flatMap(this::assignStatus)
                 .flatMap(this::validateLoanApplicationStateAndType)
@@ -41,10 +39,10 @@ public class LoanApplicationUseCase {
                                 loanApp.getDocumentNumber()));
     }
 
-    private Mono<LoanApplication> searchUserAndAssignEmail(LoanApplication loanApplication, String documentNumberFromToken) {
-        return userRestConsumer.findUserByDocumentIdentity(loanApplication.getDocumentNumber())
+    private Mono<LoanApplication> searchUserAndAssignEmail(LoanApplication loanApplication, String email, String token) {
+        return userRestConsumer.findUserByEmail(email, token)
                 .switchIfEmpty(Mono.error(new UserNotFoundException("Usuario no encontrado")))
-                .filter(user -> user.getDocumentNumber().equals(documentNumberFromToken))
+                .filter(user -> user.getDocumentNumber().equals(loanApplication.getDocumentNumber()))
                 .switchIfEmpty(Mono.error(new AccessDeniedException("No puedes crear préstamos a nombre de otro usuario")))
                 .map(user -> {
                             loanApplication.setEmail(user.getEmail());
