@@ -2,14 +2,17 @@ package co.com.pragma.r2dbc;
 
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.pragma.model.loanreviewitem.LoanReviewItem;
 import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.status.Status;
 import co.com.pragma.r2dbc.entities.LoanApplicationEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -70,5 +73,16 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
     @Override
     public Mono<Boolean> existsUserAndLoanTypeAndStatus(String documentNumber, UUID loanTypeId, UUID statusId) {
         return repository.existsByDocumentNumberAndLoanTypeIdAndStatusId(documentNumber, loanTypeId, statusId);
+    }
+
+    @Override
+    public Flux<LoanReviewItem> findLoanApplicationWithDetails(List<String> statuses, int limit, int offset) {
+        return repository.findLoanApplicationWithDetails(statuses, limit, offset)
+                .map(loanReviewItemEntity -> mapper.map(loanReviewItemEntity, LoanReviewItem.class));
+    }
+
+    @Override
+    public Mono<Long> countLoanApplicationByStatusesIn(List<String> statuses) {
+        return repository.countByStatusesIn(statuses);
     }
 }

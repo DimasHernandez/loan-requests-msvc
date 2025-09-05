@@ -8,6 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
+@ToString
 public class UserBasicInfo {
 
     private String name;
@@ -15,8 +16,6 @@ public class UserBasicInfo {
     private String surname;
 
     private String email;
-
-    private String documentNumber;
 
     private Integer baseSalary;
 }

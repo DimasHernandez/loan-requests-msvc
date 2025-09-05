@@ -15,7 +15,5 @@ public class UserBasicInfoResponse {
 
     private String email;
 
-    private String documentNumber;
-
     private Integer baseSalary;
 }

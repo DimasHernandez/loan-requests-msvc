@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -36,8 +37,9 @@ public class SecurityConfig {
                 .securityContextRepository(jwtSecurityContextRepository)
                 .authorizeExchange(exchanges ->
                         exchanges
-                                .pathMatchers("/api/v1/loans/**").hasRole("APPLICANT")
-                                .pathMatchers("/api/v1/users/emails/batch").hasRole("ADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/v1/loans").hasRole("APPLICANT")
+                                .pathMatchers(HttpMethod.GET, "/api/v1/loans").hasRole("ADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/v1/users/emails/batch").hasRole("ADMIN")
                                 .pathMatchers("/webjars/swagger-ui/index.html").permitAll()
                                 .pathMatchers("/swagger-ui.html").permitAll()
                                 .pathMatchers("/swagger-ui/**").permitAll()

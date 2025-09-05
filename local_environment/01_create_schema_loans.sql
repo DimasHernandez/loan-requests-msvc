@@ -30,13 +30,14 @@ VALUES  ('FREE_INVESTMENT',        500000.00, 99000000.00, 10, 240, 0.0235, FALS
         ('MICROCREDIT',           20000.00, 5000000.00, 1,24 ,  0.0250, TRUE);
 
 CREATE TABLE IF NOT EXISTS public.loan_applications (
-    loan_app_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_number  VARCHAR(50) NOT NULL,
-    amount           DECIMAL(10,2) NOT NULL CHECK (amount > 0),
-    term_month       INTEGER NOT NULL CHECK (term_month > 0),
-    email            VARCHAR(150) NOT NULL,
-    loan_type_id     UUID NOT NULL,
-    status_id        UUID NOT NULL,
+    loan_app_id                             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_number                         VARCHAR(50) NOT NULL,
+    amount                                  DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+    term_month                              INTEGER NOT NULL CHECK (term_month > 0),
+    email                                   VARCHAR(150) NOT NULL,
+    total_month_debt_approved_applications  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    loan_type_id                            UUID NOT NULL,
+    status_id                               UUID NOT NULL,
 
     CONSTRAINT fk_loan_type
     FOREIGN KEY (loan_type_id)
