@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,8 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 @Component
@@ -57,5 +60,19 @@ public class LoanHandler {
                         .created(uri)
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(loanResponse));
+    }
+
+    public Mono<ServerResponse> listenGetLoanApplications(ServerRequest request) {
+        int page = request.queryParam("page").map(Integer::parseInt).orElse(0);
+        int size = request.queryParam("size").map(Integer::parseInt).orElse(10);
+
+        String token = request.headers().header(HttpHeaders.AUTHORIZATION).getFirst().substring(7);
+        List<String> statuses = request.queryParam("statuses").map(status -> Arrays.asList(status.split(",")))
+                .orElse(List.of("PENDING_REVIEW"));
+
+        return loanApplicationUseCase.getLoanApplicationsForReview(statuses, page, size, token)
+                .flatMap(pageResponse -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(pageResponse));
     }
 }

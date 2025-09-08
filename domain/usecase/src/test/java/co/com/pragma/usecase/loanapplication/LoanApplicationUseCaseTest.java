@@ -1,9 +1,11 @@
 package co.com.pragma.usecase.loanapplication;
 
+import co.com.pragma.model.common.PageResponse;
 import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.loanapplication.gateways.LoggerPort;
+import co.com.pragma.model.loanreviewitem.LoanReviewItem;
 import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.model.status.Status;
@@ -11,6 +13,7 @@ import co.com.pragma.model.status.gateways.StatusRepository;
 import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.enums.DocumentType;
 import co.com.pragma.model.user.gateways.UserRestConsumerPort;
+import co.com.pragma.model.userbasicinfo.UserBasicInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,13 +21,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 
@@ -257,7 +263,57 @@ class LoanApplicationUseCaseTest {
                 .verify();
     }
 
+    @Test
+    void shouldReturnLoanApplicationsForReviewSuccess() {
+        // Arrange
+        List<String> statuses = statusesMock();
+        int page = 0;
+        int size = 2;
+        String token = tokenMock();
+        LoanReviewItem loanReviewItem = loanReviewItemMock();
+        UserBasicInfo userBasic = userBasicInfoMock();
 
+        when(loanApplicationRepository.countLoanApplicationByStatusesIn(any(List.class))).thenReturn(Mono.just(2L));
+        when(loanApplicationRepository.findLoanApplicationWithDetails(any(List.class), anyInt(), anyInt()))
+                .thenReturn(Flux.just(loanReviewItem));
+        when(userRestConsumer.findUsersByBatchEmails(any(List.class), any(String.class))).thenReturn(Flux.just(userBasic));
+
+        // Act
+        Mono<PageResponse<LoanReviewItem>> result = loanApplicationUseCase.getLoanApplicationsForReview(statuses, page, size, token);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectNextMatches(pageResponse ->
+                        pageResponse.getTotalElements() == 2 &&
+                                !pageResponse.getContent().isEmpty())
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldReturnLoanApplicationsForReviewEmptySuccess() {
+        // Arrange
+        List<String> statuses = statusesMock();
+        int page = 0;
+        int size = 2;
+        String token = tokenMock();
+
+        when(loanApplicationRepository.countLoanApplicationByStatusesIn(any(List.class))).thenReturn(Mono.just(0L));
+        when(loanApplicationRepository.findLoanApplicationWithDetails(any(List.class), anyInt(), anyInt()))
+                .thenReturn(Flux.empty());
+
+        // Act
+        Mono<PageResponse<LoanReviewItem>> result = loanApplicationUseCase.getLoanApplicationsForReview(statuses, page, size, token);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectNextMatches(pageResponse ->
+                        pageResponse.getTotalElements() == 0 &&
+                                pageResponse.getContent().isEmpty())
+                .verifyComplete();
+    }
+
+
+    // ------------------------------------------------ Mocks ------------------------------------------------
     private LoanApplication loanApplicationMock() {
         return LoanApplication.builder()
                 .id(UUID.fromString("e8c49caa-e6ab-4e58-a0a9-e221bc152ec6"))
@@ -309,6 +365,33 @@ class LoanApplicationUseCaseTest {
         return "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlzcyI6ImF1dGhlbnRpY2F0aW9uLW1zdmMiLpYXQiOjE3" +
                 "NTY4NTg3NjksImV4cCI6MTc1Njg1OTY2OSwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsInJvbGUiOiJBRE1JTiJ9." +
                 "xPetZo8ZwDf4Z5rs788DW42Uq0JALHTcoewXS1izqw";
+    }
+
+    private List<String> statusesMock() {
+        return List.of("PENDING_REVIEW", "REJECTED", "MANUAL_REVIEW");
+    }
+
+    private LoanReviewItem loanReviewItemMock() {
+        return LoanReviewItem.builder()
+                .amount(new BigDecimal("600000.00"))
+                .termMonth(10)
+                .email("pepe@example.com")
+                .fullName("Pepe Perez")
+                .loanTypeName("MICROCREDIT")
+                .interestRate(new BigDecimal("0.0250"))
+                .statusName("MANUAL_REVIEW")
+                .baseSalary(2200000)
+                .totalMonthlyDebtApprovedApplications(new BigDecimal("200000"))
+                .build();
+    }
+
+    private UserBasicInfo userBasicInfoMock() {
+        return UserBasicInfo.builder()
+                .name("Pepe")
+                .surname("Perez")
+                .email("pepe@example.com")
+                .baseSalary(2200000)
+                .build();
     }
 
 }

@@ -1,17 +1,21 @@
 package co.com.pragma.usecase.loanapplication;
 
+import co.com.pragma.model.common.PageResponse;
 import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.loanapplication.gateways.LoggerPort;
+import co.com.pragma.model.loanreviewitem.LoanReviewItem;
 import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.model.status.gateways.StatusRepository;
 import co.com.pragma.model.user.gateways.UserRestConsumerPort;
+import co.com.pragma.model.userbasicinfo.UserBasicInfo;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @RequiredArgsConstructor
 public class LoanApplicationUseCase {
@@ -96,4 +100,44 @@ public class LoanApplicationUseCase {
     private boolean isTermValid(Integer term, LoanType loanType) {
         return term >= loanType.getTermMonthMin() && term <= loanType.getTermMonthMax();
     }
+
+    public Mono<PageResponse<LoanReviewItem>> getLoanApplicationsForReview(List<String> statuses, int page, int size, String token) {
+        int offSet = page * size;
+        return loanApplicationRepository.countLoanApplicationByStatusesIn(statuses)
+                .flatMap(totalElements ->
+                        loanApplicationRepository.findLoanApplicationWithDetails(statuses, size, offSet)
+                                .collectList()
+                                .flatMap(content -> {
+                                    List<String> emails = content.stream().map(LoanReviewItem::getEmail)
+                                            .distinct().toList();
+
+                                    if (emails.isEmpty()) {
+                                        return Mono.just(new PageResponse<>(content, page, size, totalElements,
+                                                (int) Math.ceil(totalElements / (double) size)));
+                                    }
+
+                                    return userRestConsumer.findUsersByBatchEmails(emails, token)
+                                            .collectMap(UserBasicInfo::getEmail)
+                                            .map(usersMap -> {
+                                                List<LoanReviewItem> loanUpdatedList = content.stream()
+                                                        .map(item -> {
+                                                            UserBasicInfo user = usersMap.get(item.getEmail());
+                                                            return item.toBuilder()
+                                                                    .fullName(user.getName().concat(" ").concat(user.getSurname()))
+                                                                    .baseSalary(user.getBaseSalary())
+                                                                    .build();
+                                                        }).toList();
+
+                                                int totalPages = (int) Math.ceil(totalElements / (double) size);
+                                                return new PageResponse<>(loanUpdatedList, page, size, totalElements, totalPages);
+                                            })
+                                            .doOnSuccess(pageResponse ->
+                                                    logger.info("checking the list of loan applications successfully. " +
+                                                                    "content_size: {} - page: {} - size: {} - total_elements: {} - total_pages: {} ",
+                                                            pageResponse.getContent().size(), page, size, totalElements, pageResponse.getTotalPages())
+                                            );
+                                })
+                );
+    }
+
 }
