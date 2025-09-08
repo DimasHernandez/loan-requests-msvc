@@ -1,9 +1,13 @@
 package co.com.pragma.api;
 
 import co.com.pragma.api.config.LoanPath;
+import co.com.pragma.api.documentation.LoanReviewItemPageResponse;
 import co.com.pragma.api.dto.LoanRequest;
 import co.com.pragma.api.dto.LoanResponse;
+import co.com.pragma.model.common.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -53,6 +57,42 @@ public class LoanRouterRest {
 
                                     @ApiResponse(responseCode = "422", description = "validation failed",
                                             content = @Content(schema = @Schema(example = "{ \"error\": \"Fallo validacion\", \"status\": \"422\", \"detail\": \"El documento de identidad es obligatorio\" }")))
+                            }
+                    )
+            ),
+            @RouterOperation(
+                    path = "/api/v1/loans",
+                    produces = {"application/json"},
+                    method = RequestMethod.GET,
+                    beanClass = LoanHandler.class,
+                    beanMethod = "listenGetLoanApplications",
+                    operation = @Operation(
+                            operationId = "getLoanApplicationsReview",
+                            summary = "As an administrator user, review loan requests from users",
+                            description = "review loan applications",
+                            parameters = {
+                                    @Parameter(
+                                            name = "page",
+                                            description = "The number starts at zero, page number you wish to consult",
+                                            in = ParameterIn.QUERY
+                                    ),
+                                    @Parameter(
+                                            name = "size",
+                                            description = "The number of records displayed per page",
+                                            in = ParameterIn.QUERY
+                                    ),
+                                    @Parameter(
+                                            name = "statuses",
+                                            description = "Application statuses to filter. [PENDING_REVIEW,REJECTED,MANUAL_REVIEW]",
+                                            in = ParameterIn.QUERY
+                                    )
+                            },
+                            responses = {
+                                    @ApiResponse(
+                                            responseCode = "200",
+                                            description = "Loans for review found",
+                                            content = @Content(schema = @Schema(implementation = LoanReviewItemPageResponse.class))
+                                    )
                             }
                     )
             )

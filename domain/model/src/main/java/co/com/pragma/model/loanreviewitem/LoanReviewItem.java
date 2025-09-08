@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-@ToString
 public class LoanReviewItem {
 
     private BigDecimal amount;

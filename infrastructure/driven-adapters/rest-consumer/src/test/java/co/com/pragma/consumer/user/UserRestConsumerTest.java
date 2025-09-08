@@ -6,6 +6,7 @@ import co.com.pragma.consumer.user.mapper.UserMapper;
 import co.com.pragma.model.exceptions.UserNotFoundException;
 import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.enums.DocumentType;
+import co.com.pragma.model.userbasicinfo.UserBasicInfo;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +24,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.test.StepVerifier;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -146,7 +148,7 @@ class UserRestConsumerTest {
         StepVerifier.create(response)
                 .expectErrorMatches(throwable ->
                         throwable instanceof RuntimeException &&
-                        throwable.getMessage().equals("Error interno del servidor"))
+                                throwable.getMessage().equals("Error interno del servidor"))
                 .verify();
     }
 
@@ -168,6 +170,34 @@ class UserRestConsumerTest {
                         throwable instanceof ServiceUnavailableException &&
                                 throwable.getMessage().equals("Servicio no disponible"))
                 .verify();
+    }
+
+    @Test
+    void shouldFindUsersByBatchEmails() {
+        List<String> emails = List.of("pepe@gmail.com", "juan@gmail.com");
+        String token = tokenMock();
+        UserBasicInfo userBasicInfo = userBasicInfoMock();
+
+        when(userMapper.toBasicInfo(any(UserBasicInfoResponse.class))).thenReturn(userBasicInfo);
+
+        mockBackEnd.enqueue(new MockResponse()
+                .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON)
+                .setResponseCode(HttpStatus.OK.value())
+                .setBody("{\"content\":[{\"amount\":600000.00,\"termMonth\":10,\"email\":\"pepe@gmail.com\"," +
+                        "\"fullName\":\"Pepe Perez\",\"loanTypeName\":\"MICROCREDIT\",\"interestRate\":0.0250,\"statusName\":\"MANUAL_REVIEW\"," +
+                        "\"baseSalary\":2500000,\"totalMonthlyDebtApprovedApplications\":0.00}," +
+                        "{\"amount\":600000.00,\"termMonth\":10,\"email\":\"juan@gmail.com\"," +
+                        "\"fullName\":\"Juan Gomez\",\"loanTypeName\":\"MICROCREDIT\",\"interestRate\":0.0250,\"statusName\":\"REJECTED\"," +
+                        "\"baseSalary\":19999,\"totalMonthlyDebtApprovedApplications\":0.00}]," +
+                        "\"page\":2,\"size\":2,\"totalElements\":6,\"totalPages\":3}"));
+
+        var response = userRestConsumer.findUsersByBatchEmails(emails, token);
+
+        StepVerifier.create(response)
+                .expectNextMatches(userInfo ->
+                        userInfo.getName().equals("Pepe") &&
+                                userInfo.getEmail().equals("pepe@gmail.com"))
+                .verifyComplete();
     }
 
     @AfterEach
@@ -193,6 +223,15 @@ class UserRestConsumerTest {
         user.setPhoneNumber("3158712655");
         user.setBaseSalary(1000000);
         return user;
+    }
+
+    private UserBasicInfo userBasicInfoMock() {
+        return UserBasicInfo.builder()
+                .name("Pepe")
+                .surname("Perez")
+                .email("pepe@gmail.com")
+                .baseSalary(2200000)
+                .build();
     }
 
 }

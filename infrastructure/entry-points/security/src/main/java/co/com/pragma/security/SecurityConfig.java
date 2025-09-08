@@ -62,7 +62,7 @@ public class SecurityConfig {
             response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
             Map<String, Object> body = new HashMap<>();
-            body.put("status", HttpStatus.UNAUTHORIZED.value());
+            body.put("code", "AUTH_010");
             body.put("error", "No autorizado");
             body.put("message", "No tiene credenciales validas");
 
@@ -81,7 +81,7 @@ public class SecurityConfig {
             response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
             Map<String, Object> body = new HashMap<>();
-            body.put("status", HttpStatus.FORBIDDEN.value());
+            body.put("code", "AUTH_013");
             body.put("error", "Forbidden");
             body.put("message", "No tiene credenciales validas");
 

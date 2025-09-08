@@ -47,8 +47,15 @@ public class UserRestConsumer implements UserRestConsumerPort {
     @CircuitBreaker(name = "findUsersByBatchEmails")
     @Override
     public Flux<UserBasicInfo> findUsersByBatchEmails(List<String> emails, String token) {
+        return Flux.fromIterable(emails)
+                .buffer(1000)
+                .flatMap(batch -> callBatchEndpoint(batch, token))
+                .flatMap(Flux::fromIterable);
+    }
+
+    private Mono<List<UserBasicInfo>> callBatchEndpoint(List<String> batch, String token) {
         // Create the request body as Mono
-        Mono<EmailRequest> emailRequestMono = Mono.just(new EmailRequest(emails));
+        Mono<EmailRequest> emailRequestMono = Mono.just(new EmailRequest(batch));
 
         return webClient.post()
                 .uri("/api/v1/users/emails/batch")
@@ -59,7 +66,8 @@ public class UserRestConsumer implements UserRestConsumerPort {
                 .onStatus(HttpStatusCode::is4xxClientError, this::handle4xxClientError)
                 .onStatus(HttpStatusCode::is5xxServerError, this::handle5xxServerError)
                 .bodyToFlux(UserBasicInfoResponse.class)
-                .map(userMapper::toBasicInfo);
+                .map(userMapper::toBasicInfo)
+                .collectList();
     }
 
     private Mono<? extends Throwable> handle4xxClientError(ClientResponse clientResponse) {

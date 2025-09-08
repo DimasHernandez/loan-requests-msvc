@@ -112,7 +112,7 @@ public class LoanApplicationUseCase {
                                             .distinct().toList();
 
                                     if (emails.isEmpty()) {
-                                        Mono.just(new PageResponse<>(content, page, size, totalElements,
+                                        return Mono.just(new PageResponse<>(content, page, size, totalElements,
                                                 (int) Math.ceil(totalElements / (double) size)));
                                     }
 
@@ -130,7 +130,12 @@ public class LoanApplicationUseCase {
 
                                                 int totalPages = (int) Math.ceil(totalElements / (double) size);
                                                 return new PageResponse<>(loanUpdatedList, page, size, totalElements, totalPages);
-                                            });
+                                            })
+                                            .doOnSuccess(pageResponse ->
+                                                    logger.info("checking the list of loan applications successfully. " +
+                                                                    "content_size: {} - page: {} - size: {} - total_elements: {} - total_pages: {} ",
+                                                            pageResponse.getContent().size(), page, size, totalElements, pageResponse.getTotalPages())
+                                            );
                                 })
                 );
     }
