@@ -46,6 +46,7 @@ public class SecurityConfig {
                                 .pathMatchers("/webjars/**").permitAll()
                                 .pathMatchers("/v3/api-docs").permitAll()
                                 .pathMatchers("/v3/api-docs/**").permitAll()
+                                .pathMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                                 .anyExchange().authenticated()
                 )
                 .exceptionHandling(ex -> ex
