@@ -14,7 +14,7 @@ spring:
 adapter:
   restconsumer:
     timeout: 5000
-    url: "http://localhost:8080"
+    url: ${URL_AUTH_MSVC:http://localhost:8080}
 management:
   health:
     circuitbreakers:
@@ -55,12 +55,12 @@ routes:
     loans: "/api/v1/loans"
 adapters:
   r2dbc:
-    host: "localhost"
-    port: 5433
-    database: "loans_db"
-    schema: "public"
-    username: "admin"
-    password: "@admin1"
+    host: ${LOAN_MSVC_DB_HOST:postgres17_loans_db}
+    port: ${LOAN_MSVC_DB_PORT:5433}
+    database: ${LOAN_MSVC_DB_DATABASE:loans_db}
+    schema: ${LOAN_MSVC_DB_SCHEMA:public}
+    username: ${LOAN_MSVC_DB_USERNAME:admin}
+    password: ${LOAN_MSVC_DB_PASSWORD:@admin1}
 security:
   jwt:
-    secretKey: "VC_ayQoxqq_7BcqwcYplfPc5Au38nbm8Z_u5ReEHVE0="
+    secretKey: ${SUPER_SECRET_KEY:"VC_ayQoxqq_7BcqwcYplfPc5Au38nbm8Z_u5ReEHVE0="}
