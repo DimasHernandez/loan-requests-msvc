@@ -14,7 +14,7 @@ spring:
 adapter:
   restconsumer:
     timeout: 5000
-    url: ${URL_AUTH_MSVC:http://localhost:8080}
+    url: "${URL_AUTH_MSVC:http://localhost:8080}"
 management:
   health:
     circuitbreakers:
@@ -53,14 +53,25 @@ cors:
 routes:
   paths:
     loans: "/api/v1/loans"
+    loansUpdated: "/api/v1/loans/{loanApplicationId}"
 adapters:
   r2dbc:
-    host: ${LOAN_MSVC_DB_HOST:postgres17_loans_db}
-    port: ${LOAN_MSVC_DB_PORT:5433}
-    database: ${LOAN_MSVC_DB_DATABASE:loans_db}
-    schema: ${LOAN_MSVC_DB_SCHEMA:public}
-    username: ${LOAN_MSVC_DB_USERNAME:admin}
-    password: ${LOAN_MSVC_DB_PASSWORD:@admin1}
+    host: "${LOAN_MSVC_DB_HOST:localhost}"
+    port: "${LOAN_MSVC_DB_PORT:5433}"
+    database: "${LOAN_MSVC_DB_DATABASE:loans_db}"
+    schema: "${LOAN_MSVC_DB_SCHEMA:public}"
+    username: "${LOAN_MSVC_DB_USERNAME:admin}"
+    password: "${LOAN_MSVC_DB_PASSWORD:@admin1}"
 security:
   jwt:
-    secretKey: ${SUPER_SECRET_KEY:"VC_ayQoxqq_7BcqwcYplfPc5Au38nbm8Z_u5ReEHVE0="}
+    secretKey: "${SUPER_SECRET_KEY:\"VC_ayQoxqq_7BcqwcYplfPc5Au38nbm8Z_u5ReEHVE0=\"\
+      }"
+entrypoint:
+  sqs:
+    region: "us-east-1"
+    endpoint: "http://localhost:4566"
+    queueUrl: "http://localhost:4566/000000000000/sample"
+    waitTimeSeconds: 20
+    maxNumberOfMessages: 10
+    visibilityTimeoutSeconds: 10
+    numberOfThreads: 1

@@ -22,10 +22,15 @@ public class StatusReactiveRepositoryAdapter extends ReactiveAdapterOperations<
         super(repository, mapper, statusEntity -> mapper.map(statusEntity, Status.class));
     }
 
-
     @Override
     public Mono<Status> findByName(String name) {
         return repository.findByName(name)
+                .map(super::toEntity);
+    }
+
+    @Override
+    public Mono<Status> findStatusById(UUID id) {
+        return repository.findById(id)
                 .map(super::toEntity);
     }
 }

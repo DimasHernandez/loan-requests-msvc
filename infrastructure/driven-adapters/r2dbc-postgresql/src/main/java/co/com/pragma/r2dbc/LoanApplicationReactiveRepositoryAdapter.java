@@ -71,6 +71,11 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
     }
 
     @Override
+    public Mono<LoanApplication> findLoanApplicationById(UUID id) {
+        return super.findById(id);
+    }
+
+    @Override
     public Mono<Boolean> existsUserAndLoanTypeAndStatus(String documentNumber, UUID loanTypeId, UUID statusId) {
         return repository.existsByDocumentNumberAndLoanTypeIdAndStatusId(documentNumber, loanTypeId, statusId);
     }

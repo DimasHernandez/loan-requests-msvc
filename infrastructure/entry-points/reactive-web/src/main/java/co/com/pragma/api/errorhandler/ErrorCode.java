@@ -11,6 +11,7 @@ public enum ErrorCode {
     AMOUNT_OUT_RANGE("AMT_001", "Monto fuera del rango establecido"),
     TERM_OUT_RANGE("TERM_001", "Plazo fuera del rango establecido"),
     LOAN_REQUEST_STATUS_MISMATCH("USR_005", "El usuario ya cuenta con una solicitud de préstamo en proceso del mismo tipo"),
+    STATUS_NOT_ALLOWED("SNA_006", "El estado final no está permitido"),
 
     // 400
     MALFORMED_JSON("GEN_001", "Formato JSON inválido"),
@@ -26,6 +27,7 @@ public enum ErrorCode {
     ROLE_NOT_FOUND("ROL_001", "Rol no encontrado"),
     LOAN_TYPE_NOT_FOUND("LOAN_TYPE_001", "Loan type no encontrado"),
     STATUS_NOT_FOUND("STATUS_001", "Estado no encontrado"),
+    LOAN_APPLICATION_NOT_FOUND("LOAN_APP_001", "Présmo no encontrado"),
 
     //500
     GENERIC_SERVER_ERROR("GEN_500", "Error interno del servidor"),

@@ -2,7 +2,9 @@ package co.com.pragma.api.mapper;
 
 import co.com.pragma.api.dto.LoanRequest;
 import co.com.pragma.api.dto.LoanResponse;
+import co.com.pragma.api.dto.UpdateLoanApplicationResponse;
 import co.com.pragma.model.loanapplication.LoanApplication;
+import co.com.pragma.model.loanapplication.UpdatedLoanApplication;
 import co.com.pragma.model.loantype.LoanType;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -18,6 +20,8 @@ public interface LoanMapper {
     LoanApplication toDomain(LoanRequest loanRequest);
 
     LoanResponse toResponse(LoanApplication loanApplication);
+
+    UpdateLoanApplicationResponse toUpdateLoanApplicationResponse(UpdatedLoanApplication updatedLoanApplication);
 
     @Named("StringToLoanType")
     default LoanType stringToLoanType(String loanTypeName) {

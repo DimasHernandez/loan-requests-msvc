@@ -12,6 +12,8 @@ public interface LoanApplicationRepository {
 
     Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication);
 
+    Mono<LoanApplication> findLoanApplicationById(UUID id);
+
     Mono<Boolean> existsUserAndLoanTypeAndStatus(String documentNumber, UUID loanTypeId, UUID statusId);
 
     Flux<LoanReviewItem> findLoanApplicationWithDetails(List<String> statuses, int limit, int offset);

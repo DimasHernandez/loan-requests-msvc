@@ -10,4 +10,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class LoanPath {
 
     private String loans;
+
+    private String loansUpdated;
 }
