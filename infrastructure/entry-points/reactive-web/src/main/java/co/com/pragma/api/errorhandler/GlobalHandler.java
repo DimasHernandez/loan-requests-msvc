@@ -129,6 +129,15 @@ public class GlobalHandler implements WebExceptionHandler {
                                     false, "LoanApplicationNotFoundException")));
         }
 
+        if (ex instanceof IllegalArgumentException) {
+            response.setStatusCode(HttpStatus.BAD_REQUEST);
+            return response.writeWith(
+                    Mono.just(toBuffer(response, VALIDATION_FAILED, ErrorCode.BAD_REQUEST.getCode(),
+                                    ex.getMessage()))
+                            .doOnNext(buffer -> logException(exchange, ex, HttpStatus.BAD_REQUEST,
+                                    false, "IllegalArgumentException")));
+        }
+
         if (ex instanceof RuntimeException r) {
             String message = r.getMessage() != null ? r.getMessage() : "";
 

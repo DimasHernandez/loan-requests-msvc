@@ -5,6 +5,7 @@ import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.UpdatedLoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.pragma.model.loanapplication.gateways.LoanStatusMessageGateway;
 import co.com.pragma.model.loanapplication.gateways.LoggerPort;
 import co.com.pragma.model.loanapplication.gateways.TransactionalWrapper;
 import co.com.pragma.model.loanreviewitem.LoanReviewItem;
@@ -33,6 +34,7 @@ public class LoanApplicationUseCase {
     private final LoanApplicationRepository loanApplicationRepository;
     private final UserRestConsumerPort userRestConsumer;
     private final TransactionalWrapper transactionalWrapper;
+    private final LoanStatusMessageGateway loanStatusMessageGateway;
     private final LoggerPort logger;
 
     public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication, String email, String token) {
@@ -179,14 +181,21 @@ public class LoanApplicationUseCase {
 
                                     loanApp.setStatus(newStatus);
                                     return loanApplicationRepository.saveLoanApplication(loanApp)
-                                            .map(updatedLoan ->
-                                                    new UpdatedLoanApplication().toBuilder()
-                                                            .id(updatedLoan.getId())
-                                                            .email(updatedLoan.getEmail())
-                                                            .previousStatus(previousStatus.getName())
-                                                            .newStatus(newStatus.getName())
-                                                            .message("Loan Status Update Successful")
-                                                            .build());
+                                            .flatMap(updatedLoan -> {
+                                                UpdatedLoanApplication response = new UpdatedLoanApplication().toBuilder()
+                                                        .id(updatedLoan.getId())
+                                                        .email(updatedLoan.getEmail())
+                                                        .previousStatus(previousStatus.getName())
+                                                        .newStatus(newStatus.getName())
+                                                        .message("Loan Status Update Successful")
+                                                        .build();
+
+                                                return loanStatusMessageGateway.send(response)
+                                                        .doOnSuccess(msgId -> logger.info("Loan status event sent to SQS with message_id= {}", msgId))
+                                                        .doOnError(e -> logger.error("Failed to send loan status event to SQS", e))
+                                                        .thenReturn(response);
+
+                                            });
                                 }
                         )
         );

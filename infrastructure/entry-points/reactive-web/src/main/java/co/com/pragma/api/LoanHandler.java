@@ -73,16 +73,21 @@ public class LoanHandler {
     }
 
     public Mono<ServerResponse> listenUpdateLoanApplication(ServerRequest request) {
-        UUID id = UUID.fromString(request.pathVariable("loanApplicationId"));
-        return request.bodyToMono(UpdateLoanApplicationRequest.class)
-                .flatMap(this::validation)
-                .flatMap(updateLoanRequest ->
-                        loanApplicationUseCase.updatedLoanApplicationStatus(id, updateLoanRequest.status().toUpperCase()))
-                .map(loanMapper::toUpdateLoanApplicationResponse)
-                .flatMap(loanResponse -> ServerResponse
-                        .ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(loanResponse));
+        try {
+            UUID id = UUID.fromString(request.pathVariable("loanApplicationId"));
+            return request.bodyToMono(UpdateLoanApplicationRequest.class)
+                    .flatMap(this::validation)
+                    .flatMap(updateLoanRequest ->
+                            loanApplicationUseCase.updatedLoanApplicationStatus(id, updateLoanRequest.status().toUpperCase()))
+                    .map(loanMapper::toUpdateLoanApplicationResponse)
+                    .flatMap(loanResponse -> ServerResponse
+                            .ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(loanResponse));
+
+        } catch (IllegalArgumentException e) {
+            return Mono.error(new IllegalArgumentException("loanApplicationId es invalido"));
+        }
     }
 
     private <T> Mono<T> validation(T entityDto) {

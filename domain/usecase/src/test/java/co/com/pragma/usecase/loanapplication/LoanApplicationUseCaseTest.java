@@ -3,8 +3,11 @@ package co.com.pragma.usecase.loanapplication;
 import co.com.pragma.model.common.PageResponse;
 import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.loanapplication.LoanApplication;
+import co.com.pragma.model.loanapplication.UpdatedLoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.pragma.model.loanapplication.gateways.LoanStatusMessageGateway;
 import co.com.pragma.model.loanapplication.gateways.LoggerPort;
+import co.com.pragma.model.loanapplication.gateways.TransactionalWrapper;
 import co.com.pragma.model.loanreviewitem.LoanReviewItem;
 import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
@@ -50,6 +53,12 @@ class LoanApplicationUseCaseTest {
     private UserRestConsumerPort userRestConsumer;
 
     @Mock
+    private TransactionalWrapper transactionalWrapper;
+
+    @Mock
+    private LoanStatusMessageGateway loanStatusMessageGateway;
+
+    @Mock
     private LoggerPort logger;
 
 
@@ -58,7 +67,7 @@ class LoanApplicationUseCaseTest {
     @BeforeEach
     void setup() {
         loanApplicationUseCase = new LoanApplicationUseCase(loanTypeRepository, statusRepository, loanApplicationRepository,
-                userRestConsumer, logger);
+                userRestConsumer, transactionalWrapper, loanStatusMessageGateway, logger);
     }
 
     @Test
@@ -69,7 +78,7 @@ class LoanApplicationUseCaseTest {
         String token = tokenMock();
         User user = userMock();
         LoanType loanType = loanTypeMock();
-        Status status = statusMock();
+        Status status = statusPendingReviewMock();
 
         // Mock reactive repositories
         when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
@@ -242,7 +251,7 @@ class LoanApplicationUseCaseTest {
         String token = tokenMock();
         User user = userMock();
         LoanType loanType = loanTypeMock();
-        Status status = statusMock();
+        Status status = statusPendingReviewMock();
 
         // Mock reactive repositories
         when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
@@ -312,6 +321,126 @@ class LoanApplicationUseCaseTest {
                 .verifyComplete();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"APPROVED", "REJECTED"})
+    void shouldReturnUpdatedLoanApplicationSuccessfully(String statusFinal) {
+        // Arrange
+        UUID loanId = UUID.fromString("e8c49caa-e6ab-4e58-a0a9-e221bc152ec6");
+        LoanApplication loanApp = loanApplicationMock();
+        Status newStatus = statusFinalMock(statusFinal);
+        Status oldStatus = statusPendingReviewMock();
+        String messageId = "1111111";
+
+        // When reactive repositories
+        when(transactionalWrapper.transactional(any(Mono.class)))
+                .thenAnswer(invocationOnMock -> invocationOnMock.getArguments()[0]);
+        when(loanApplicationRepository.findLoanApplicationById(any(UUID.class))).thenReturn(Mono.just(loanApp));
+        when(statusRepository.findByName(any(String.class))).thenReturn(Mono.just(newStatus));
+        when(statusRepository.findStatusById(any(UUID.class))).thenReturn(Mono.just(oldStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class))).thenReturn(Mono.just(loanApp));
+        when(loanStatusMessageGateway.send(any(UpdatedLoanApplication.class)))
+                .thenReturn(Mono.just(messageId));
+
+        // Act
+        Mono<UpdatedLoanApplication> result = loanApplicationUseCase.updatedLoanApplicationStatus(loanId, statusFinal);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectNextMatches(updatedLoan ->
+                        updatedLoan.getId().equals(UUID.fromString("e8c49caa-e6ab-4e58-a0a9-e221bc152ec6")) &&
+                                updatedLoan.getPreviousStatus().equals(oldStatus.getName()) &&
+                                updatedLoan.getNewStatus().equals(newStatus.getName()))
+                .verifyComplete();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"PENDING_REVIEW", "MANUAL_REVIEW"})
+    void shouldReturnErrorWhenStatusIsProhibited(String statusProhibited) {
+        // Arrange
+        UUID loanId = UUID.fromString("e8c49caa-e6ab-4e58-a0a9-e221bc152ec6");
+
+        // Act
+        Mono<UpdatedLoanApplication> result = loanApplicationUseCase.updatedLoanApplicationStatus(loanId, statusProhibited);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable ->
+                        throwable instanceof FinalStateNotAllowedException &&
+                                throwable.getMessage().equals("Estado no permitido. [APPROVED, REJECTED]"))
+                .verify();
+    }
+
+    @Test
+    void shouldReturnErrorWhenNotExistLoanApplicationNotFoundException() {
+        // Arrange
+        UUID loanId = UUID.fromString("f3ac47d0-2658-44e6-84b8-95fe75fe99f1");
+        String status = "APPROVED";
+
+        // When reactive repositories
+        when(transactionalWrapper.transactional(any(Mono.class)))
+                .thenAnswer(invocationOnMock -> invocationOnMock.getArguments()[0]);
+        when(loanApplicationRepository.findLoanApplicationById(any(UUID.class))).thenReturn(Mono.empty());
+        when(statusRepository.findByName(any(String.class))).thenReturn(Mono.empty());
+
+        // Act
+        Mono<UpdatedLoanApplication> result = loanApplicationUseCase.updatedLoanApplicationStatus(loanId, status);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof LoanApplicationNotFoundException &&
+                        throwable.getMessage().equals("Solicitud de préstamo no encontrada"))
+                .verify();
+    }
+
+    @Test
+    void shouldReturnErrorWhenNotExistStatusByNameNotFoundException() {
+        // Arrange
+        UUID loanId = UUID.fromString("f3ac47d0-2658-44e6-84b8-95fe75fe99f1");
+        String status = "APPROVED";
+        LoanApplication loanApp = loanApplicationMock();
+
+        // When reactive repositories
+        when(transactionalWrapper.transactional(any(Mono.class)))
+                .thenAnswer(invocationOnMock -> invocationOnMock.getArguments()[0]);
+        when(loanApplicationRepository.findLoanApplicationById(any(UUID.class))).thenReturn(Mono.just(loanApp));
+        when(statusRepository.findByName(any(String.class))).thenReturn(Mono.empty());
+
+        // Act
+        Mono<UpdatedLoanApplication> result = loanApplicationUseCase.updatedLoanApplicationStatus(loanId, status);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof StatusNotFoundException &&
+                        throwable.getMessage().equals("Estado no encontrado"))
+                .verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"APPROVED", "REJECTED"})
+    void shouldReturnErrorWhenPreviousStateIsAFinalState(String previousState) {
+        // Arrange
+        UUID loanId = UUID.fromString("f3ac47d0-2658-44e6-84b8-95fe75fe99f1");
+        LoanApplication loanApp = loanApplicationMock();
+        Status newStatus = statusFinalMock("APPROVED");
+        Status oldStatus = statusFinalMock(previousState);
+
+        // When reactive repositories
+        when(transactionalWrapper.transactional(any(Mono.class)))
+                .thenAnswer(invocationOnMock -> invocationOnMock.getArguments()[0]);
+        when(loanApplicationRepository.findLoanApplicationById(any(UUID.class))).thenReturn(Mono.just(loanApp));
+        when(statusRepository.findByName(any(String.class))).thenReturn(Mono.just(newStatus));
+        when(statusRepository.findStatusById(any(UUID.class))).thenReturn(Mono.just(oldStatus));
+
+        // Act
+        Mono<UpdatedLoanApplication> result = loanApplicationUseCase.updatedLoanApplicationStatus(loanId, previousState);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectErrorMatches(throwable -> throwable instanceof FinalStateNotAllowedException &&
+                        throwable.getMessage().equals("La solicitud de préstamo ya se encuentra en estado final " + previousState))
+                .verify();
+    }
+
 
     // ------------------------------------------------ Mocks ------------------------------------------------
     private LoanApplication loanApplicationMock() {
@@ -322,7 +451,7 @@ class LoanApplicationUseCaseTest {
                 .termMonth(12)
                 .email("pepe@example.com")
                 .loanType(loanTypeMock())
-                .status(statusMock())
+                .status(statusPendingReviewMock())
                 .build();
     }
 
@@ -339,11 +468,19 @@ class LoanApplicationUseCaseTest {
                 .build();
     }
 
-    private Status statusMock() {
+    private Status statusPendingReviewMock() {
         return Status.builder()
                 .id(UUID.fromString("70e91cdf-07dd-404e-bbc9-27646f3030f9"))
                 .name("PENDING_REVIEW")
                 .description("The request has been submitted and is waiting to be reviewed automatically or manually.")
+                .build();
+    }
+
+    private Status statusFinalMock(String statusFinal) {
+        return Status.builder()
+                .id(UUID.randomUUID())
+                .name(statusFinal)
+                .description("Sattus request")
                 .build();
     }
 

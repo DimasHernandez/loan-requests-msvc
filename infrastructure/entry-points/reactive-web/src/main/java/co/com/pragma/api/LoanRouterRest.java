@@ -4,6 +4,8 @@ import co.com.pragma.api.config.LoanPath;
 import co.com.pragma.api.documentation.LoanReviewItemPageResponse;
 import co.com.pragma.api.dto.LoanRequest;
 import co.com.pragma.api.dto.LoanResponse;
+import co.com.pragma.api.dto.UpdateLoanApplicationRequest;
+import co.com.pragma.api.dto.UpdateLoanApplicationResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -91,6 +93,41 @@ public class LoanRouterRest {
                                             description = "Loans for review found",
                                             content = @Content(schema = @Schema(implementation = LoanReviewItemPageResponse.class))
                                     )
+                            }
+                    )
+            ),
+            @RouterOperation(
+                    path = "/api/v1/loans/{loanApplicationId}",
+                    produces = {"application/json"},
+                    method = RequestMethod.PUT,
+                    beanClass = LoanHandler.class,
+                    beanMethod = "listenUpdateLoanApplication",
+                    operation = @Operation(
+                            operationId = "UpdateStatusLoanApplication",
+                            summary = "Update the status of a request",
+                            description = "The user advisor wants to update the status of a loan application.",
+                            tags = {"LoanApplication"},
+                            requestBody = @RequestBody(
+                                    required = true,
+                                    description = "Update status a record of a loan application",
+                                    content = @Content(schema = @Schema(implementation = UpdateLoanApplicationRequest.class))
+                            ),
+                            responses = {
+                                    @ApiResponse(responseCode = "200", description = "Loan updated successfully",
+                                            content = @Content(schema = @Schema(implementation = UpdateLoanApplicationResponse.class))),
+
+                                    @ApiResponse(responseCode = "401", description = "Unauthorized",
+                                            content = @Content(schema = @Schema(example = "{ \"code\": \"AUTH_010\", \"error\": \"No autorizado\", \"message\": \"No tiene credenciales validas\" }"))),
+
+                                    @ApiResponse(responseCode = "403", description = "Forbidden",
+                                            content = @Content(schema = @Schema(example = "{ \"code\": \"AUTH_013\", \"error\": \"Forbidden\", \"message\": \"No tiene credenciales validas\" }"))),
+
+                                    @ApiResponse(responseCode = "404", description = "Not Found",
+                                            content = @Content(schema = @Schema(example = "{ \"error\": \"Error de negocio\", \"code\": \"LOAN_APP_001\", \"detail\": \"Solicitud de préstamo no encontrada\" }"))),
+
+                                    @ApiResponse(responseCode = "422", description = "validation failed",
+                                            content = @Content(schema = @Schema(example = "{ \"error\": \"Fallo validacion\", \"code\": \"SNA_006\", \"detail\": \"La solicitud de préstamo ya se encuentra en estado final APPROVED\" }")))
+
                             }
                     )
             )
