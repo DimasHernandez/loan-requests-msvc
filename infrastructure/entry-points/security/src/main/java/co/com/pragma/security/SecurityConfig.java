@@ -38,8 +38,9 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges ->
                         exchanges
                                 .pathMatchers(HttpMethod.POST, "/api/v1/loans").hasRole("APPLICANT")
-                                .pathMatchers(HttpMethod.GET, "/api/v1/loans").hasRole("ADMIN")
-                                .pathMatchers(HttpMethod.POST, "/api/v1/users/emails/batch").hasRole("ADMIN")
+                                .pathMatchers(HttpMethod.GET, "/api/v1/loans").hasAnyRole("ADMIN", "ADVISOR")
+                                .pathMatchers(HttpMethod.POST, "/api/v1/users/emails/batch").hasAnyRole("ADMIN", "ADVISOR")
+                                .pathMatchers(HttpMethod.PUT, "/api/v1/loans/{loanApplicationId}").hasRole("ADVISOR")
                                 .pathMatchers("/webjars/swagger-ui/index.html").permitAll()
                                 .pathMatchers("/swagger-ui.html").permitAll()
                                 .pathMatchers("/swagger-ui/**").permitAll()

@@ -3,29 +3,38 @@ package co.com.pragma.usecase.loanapplication;
 import co.com.pragma.model.common.PageResponse;
 import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.loanapplication.LoanApplication;
+import co.com.pragma.model.loanapplication.UpdatedLoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
+import co.com.pragma.model.loanapplication.gateways.LoanStatusMessageGateway;
 import co.com.pragma.model.loanapplication.gateways.LoggerPort;
+import co.com.pragma.model.loanapplication.gateways.TransactionalWrapper;
 import co.com.pragma.model.loanreviewitem.LoanReviewItem;
 import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
+import co.com.pragma.model.status.Status;
 import co.com.pragma.model.status.gateways.StatusRepository;
 import co.com.pragma.model.user.gateways.UserRestConsumerPort;
 import co.com.pragma.model.userbasicinfo.UserBasicInfo;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuples;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 public class LoanApplicationUseCase {
 
     private static final String DEFAULT_STATUS_LOAN = "PENDING_REVIEW";
+    private static final List<String> FINAL_LOAN_STATUSES = List.of("APPROVED", "REJECTED");
 
     private final LoanTypeRepository loanTypeRepository;
     private final StatusRepository statusRepository;
     private final LoanApplicationRepository loanApplicationRepository;
     private final UserRestConsumerPort userRestConsumer;
+    private final TransactionalWrapper transactionalWrapper;
+    private final LoanStatusMessageGateway loanStatusMessageGateway;
     private final LoggerPort logger;
 
     public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication, String email, String token) {
@@ -138,6 +147,58 @@ public class LoanApplicationUseCase {
                                             );
                                 })
                 );
+    }
+
+    public Mono<UpdatedLoanApplication> updatedLoanApplicationStatus(UUID loanApplicationId, String statusToUpdated) {
+
+        if (!FINAL_LOAN_STATUSES.contains(statusToUpdated)) {
+            return Mono.error(new FinalStateNotAllowedException("Estado no permitido. [APPROVED, REJECTED]"));
+        }
+
+        return transactionalWrapper.transactional(
+                Mono.zip(
+                                loanApplicationRepository.findLoanApplicationById(loanApplicationId)
+                                        .switchIfEmpty(Mono.error(new LoanApplicationNotFoundException("Solicitud de préstamo no encontrada"))),
+                                statusRepository.findByName(statusToUpdated)
+                                        .switchIfEmpty(Mono.error(new StatusNotFoundException("Estado no encontrado")))
+                        )
+                        .flatMap(tuple -> {
+                            LoanApplication loanAppBd = tuple.getT1();
+                            Status newStatus = tuple.getT2();
+
+                            return statusRepository.findStatusById(loanAppBd.getStatus().getId())
+                                    .map(previousStatus -> Tuples.of(loanAppBd, previousStatus, newStatus));
+                        })
+                        .flatMap(tuple -> {
+                                    LoanApplication loanApp = tuple.getT1();
+                                    Status previousStatus = tuple.getT2();
+                                    Status newStatus = tuple.getT3();
+
+                                    if (FINAL_LOAN_STATUSES.contains(previousStatus.getName())) {
+                                        return Mono.error(new FinalStateNotAllowedException("La solicitud de préstamo ya se " +
+                                                "encuentra en estado final " + previousStatus.getName()));
+                                    }
+
+                                    loanApp.setStatus(newStatus);
+                                    return loanApplicationRepository.saveLoanApplication(loanApp)
+                                            .flatMap(updatedLoan -> {
+                                                UpdatedLoanApplication response = new UpdatedLoanApplication().toBuilder()
+                                                        .id(updatedLoan.getId())
+                                                        .email(updatedLoan.getEmail())
+                                                        .previousStatus(previousStatus.getName())
+                                                        .newStatus(newStatus.getName())
+                                                        .message("Loan Status Update Successful")
+                                                        .build();
+
+                                                return loanStatusMessageGateway.send(response)
+                                                        .doOnSuccess(msgId -> logger.info("Loan status event sent to SQS with message_id= {}", msgId))
+                                                        .doOnError(e -> logger.error("Failed to send loan status event to SQS", e))
+                                                        .thenReturn(response);
+
+                                            });
+                                }
+                        )
+        );
     }
 
 }

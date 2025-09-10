@@ -1,6 +1,7 @@
 package co.com.pragma.api;
 
 import co.com.pragma.api.dto.LoanRequest;
+import co.com.pragma.api.dto.UpdateLoanApplicationRequest;
 import co.com.pragma.api.mapper.LoanMapper;
 import co.com.pragma.usecase.loanapplication.LoanApplicationUseCase;
 import jakarta.validation.ConstraintViolation;
@@ -19,6 +20,7 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -34,13 +36,7 @@ public class LoanHandler {
         URI uri = serverRequest.uri();
         return Mono.zip(
                         serverRequest.bodyToMono(LoanRequest.class)
-                                .flatMap(loanRequest -> {
-                                    Set<ConstraintViolation<LoanRequest>> violations = validator.validate(loanRequest);
-                                    if (!violations.isEmpty()) {
-                                        return Mono.error(new ConstraintViolationException(violations));
-                                    }
-                                    return Mono.just(loanRequest);
-                                }),
+                                .flatMap(this::validation),
                         serverRequest.principal().cast(Authentication.class)
                 )
                 .flatMap(tuple -> {
@@ -74,5 +70,31 @@ public class LoanHandler {
                 .flatMap(pageResponse -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(pageResponse));
+    }
+
+    public Mono<ServerResponse> listenUpdateLoanApplication(ServerRequest request) {
+        try {
+            UUID id = UUID.fromString(request.pathVariable("loanApplicationId"));
+            return request.bodyToMono(UpdateLoanApplicationRequest.class)
+                    .flatMap(this::validation)
+                    .flatMap(updateLoanRequest ->
+                            loanApplicationUseCase.updatedLoanApplicationStatus(id, updateLoanRequest.status().toUpperCase()))
+                    .map(loanMapper::toUpdateLoanApplicationResponse)
+                    .flatMap(loanResponse -> ServerResponse
+                            .ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .bodyValue(loanResponse));
+
+        } catch (IllegalArgumentException e) {
+            return Mono.error(new IllegalArgumentException("loanApplicationId es invalido"));
+        }
+    }
+
+    private <T> Mono<T> validation(T entityDto) {
+        Set<ConstraintViolation<T>> violations = validator.validate(entityDto);
+        if (!violations.isEmpty()) {
+            return Mono.error(new ConstraintViolationException(violations));
+        }
+        return Mono.just(entityDto);
     }
 }

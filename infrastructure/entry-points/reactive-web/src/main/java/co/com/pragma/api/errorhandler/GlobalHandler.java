@@ -111,6 +111,33 @@ public class GlobalHandler implements WebExceptionHandler {
                                     false, "StatusNotFoundException")));
         }
 
+        if (ex instanceof FinalStateNotAllowedException) {
+            response.setStatusCode(HttpStatus.UNPROCESSABLE_ENTITY);
+            return response.writeWith(
+                    Mono.just(toBuffer(response, VALIDATION_FAILED, ErrorCode.STATUS_NOT_ALLOWED.getCode(),
+                                    ex.getMessage()))
+                            .doOnNext(buffer -> logException(exchange, ex, HttpStatus.UNPROCESSABLE_ENTITY,
+                                    false, "StatusNotAllowedException")));
+        }
+
+        if (ex instanceof LoanApplicationNotFoundException) {
+            response.setStatusCode(HttpStatus.NOT_FOUND);
+            return response.writeWith(
+                    Mono.just(toBuffer(response, BUSINESS_ERROR, ErrorCode.LOAN_APPLICATION_NOT_FOUND.getCode(),
+                                    ex.getMessage()))
+                            .doOnNext(buffer -> logException(exchange, ex, HttpStatus.NOT_FOUND,
+                                    false, "LoanApplicationNotFoundException")));
+        }
+
+        if (ex instanceof IllegalArgumentException) {
+            response.setStatusCode(HttpStatus.BAD_REQUEST);
+            return response.writeWith(
+                    Mono.just(toBuffer(response, VALIDATION_FAILED, ErrorCode.BAD_REQUEST.getCode(),
+                                    ex.getMessage()))
+                            .doOnNext(buffer -> logException(exchange, ex, HttpStatus.BAD_REQUEST,
+                                    false, "IllegalArgumentException")));
+        }
+
         if (ex instanceof RuntimeException r) {
             String message = r.getMessage() != null ? r.getMessage() : "";
 
