@@ -17,6 +17,7 @@ import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.enums.DocumentType;
 import co.com.pragma.model.user.gateways.UserRestConsumerPort;
 import co.com.pragma.model.userbasicinfo.UserBasicInfo;
+import co.com.pragma.usecase.loanvalidation.LoanValidationUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,6 +60,9 @@ class LoanApplicationUseCaseTest {
     private LoanStatusMessageGateway loanStatusMessageGateway;
 
     @Mock
+    LoanValidationUseCase loanValidationUseCase;
+
+    @Mock
     private LoggerPort logger;
 
 
@@ -67,7 +71,7 @@ class LoanApplicationUseCaseTest {
     @BeforeEach
     void setup() {
         loanApplicationUseCase = new LoanApplicationUseCase(loanTypeRepository, statusRepository, loanApplicationRepository,
-                userRestConsumer, transactionalWrapper, loanStatusMessageGateway, logger);
+                userRestConsumer, transactionalWrapper, loanStatusMessageGateway, loanValidationUseCase, logger);
     }
 
     @Test

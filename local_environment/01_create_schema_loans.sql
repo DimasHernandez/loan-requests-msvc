@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.statuses
 INSERT INTO public.statuses (name, description)
 VALUES  ('PENDING_REVIEW', 'The request has been submitted and is waiting to be reviewed automatically or manually.'),
         ('MANUAL_REVIEW', 'The request requires manual evaluation by an analyst or authorized personnel.'),
+        ('PENDING_VALIDATION', 'The request remains pending validation while the lambda updates its status or is reviewed by an administrator/advisor.'),
         ('APPROVED', 'The request has passed all validations and has been successfully approved.'),
         ('REJECTED', 'The request was reviewed and has been declined due to unmet criteria or validations.');
 

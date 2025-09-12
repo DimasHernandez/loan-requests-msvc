@@ -13,10 +13,13 @@ import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
 import co.com.pragma.model.status.Status;
 import co.com.pragma.model.status.gateways.StatusRepository;
+import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.gateways.UserRestConsumerPort;
 import co.com.pragma.model.userbasicinfo.UserBasicInfo;
+import co.com.pragma.usecase.loanvalidation.LoanValidationUseCase;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 import java.math.BigDecimal;
@@ -35,31 +38,45 @@ public class LoanApplicationUseCase {
     private final UserRestConsumerPort userRestConsumer;
     private final TransactionalWrapper transactionalWrapper;
     private final LoanStatusMessageGateway loanStatusMessageGateway;
+    private final LoanValidationUseCase loanValidationUseCase;
     private final LoggerPort logger;
 
     public Mono<LoanApplication> saveLoanApplication(LoanApplication loanApplication, String email, String token) {
         return searchUserAndAssignEmail(loanApplication, email, token)
-                .flatMap(this::assignLoanType)
-                .flatMap(this::assignStatus)
-                .flatMap(this::validateLoanApplicationStateAndType)
-                .flatMap(loanApplicationRepository::saveLoanApplication)
-                .map(savedLoanApp -> {
-                    loanApplication.setId(savedLoanApp.getId());
-                    return loanApplication;
+                .flatMap(tuple -> {
+                    LoanApplication loanApp = tuple.getT1();
+                    User user = tuple.getT2();
+                    return assignLoanType(loanApp)
+                            .flatMap(this::assignStatus)
+                            .flatMap(this::validateLoanApplicationStateAndType)
+                            .flatMap(loanApplicationRepository::saveLoanApplication)
+                            .flatMap(savedLoanApp -> {
+
+                                loanApp.setId(savedLoanApp.getId());
+
+                                if (loanApplication.getLoanType().isAutomaticValidation()) {
+                                    System.out.println("Simulando envio de mensaje a SQS de AWS"); // TODO: delete this
+                                    return loanValidationUseCase.enqueueLoanValidation(loanApp, user)
+                                            .thenReturn(loanApp);
+                                }
+                                loanApp.setTotalMonthlyDebtApprovedApplications(savedLoanApp.getTotalMonthlyDebtApprovedApplications());
+                                return Mono.just(loanApp);
+                            });
                 })
-                .doOnSuccess(loanApp ->
+                .doOnSuccess(loan ->
                         logger.info("Loan application registered. Status: {}, Document: {}", DEFAULT_STATUS_LOAN,
-                                loanApp.getDocumentNumber()));
+                                loan.getDocumentNumber()));
     }
 
-    private Mono<LoanApplication> searchUserAndAssignEmail(LoanApplication loanApplication, String email, String token) {
+    private Mono<Tuple2<LoanApplication, User>> searchUserAndAssignEmail(LoanApplication loanApplication, String email, String token) {
         return userRestConsumer.findUserByEmail(email, token)
                 .switchIfEmpty(Mono.error(new UserNotFoundException("Usuario no encontrado")))
                 .filter(user -> user.getDocumentNumber().equals(loanApplication.getDocumentNumber()))
                 .switchIfEmpty(Mono.error(new AccessDeniedException("No puedes crear préstamos a nombre de otro usuario")))
                 .map(user -> {
                             loanApplication.setEmail(user.getEmail());
-                            return loanApplication;
+                            loanApplication.setTotalMonthlyDebtApprovedApplications(BigDecimal.ZERO);
+                            return Tuples.of(loanApplication, user);
                         }
                 );
     }

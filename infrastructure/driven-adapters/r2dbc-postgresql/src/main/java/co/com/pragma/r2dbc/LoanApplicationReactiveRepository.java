@@ -1,8 +1,10 @@
 package co.com.pragma.r2dbc;
 
+import co.com.pragma.r2dbc.entities.ActiveLoanInfoEntity;
 import co.com.pragma.r2dbc.entities.LoanApplicationEntity;
 import co.com.pragma.r2dbc.entities.LoanReviewItemEntity;
 import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.query.ReactiveQueryByExampleExecutor;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
@@ -34,5 +36,14 @@ public interface LoanApplicationReactiveRepository extends ReactiveCrudRepositor
                 WHERE s.name IN (:statuses)
             """)
     Mono<Long> countByStatusesIn(List<String> statuses);
+
+    @Query("""
+            SELECT la.loan_app_id AS loan_id, la.amount, lt.interest_rate, la.term_month
+                FROM loan_applications la
+            JOIN loans_types lt ON la.loan_type_id = lt.loan_type_id
+            JOIN statuses s ON la.status_id = s.status_id
+            WHERE la.document_number = :documentNumber AND  s.name = :status
+            """)
+    Flux<ActiveLoanInfoEntity> findLoanApplicationEntitiesByDocumentNumberAndStatusName(@Param("documentNumber") String documentNumber, @Param("status") String status);
 
 }

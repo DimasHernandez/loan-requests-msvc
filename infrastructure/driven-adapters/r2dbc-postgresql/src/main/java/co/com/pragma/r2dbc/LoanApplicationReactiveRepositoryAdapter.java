@@ -4,6 +4,7 @@ import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.loanreviewitem.LoanReviewItem;
 import co.com.pragma.model.loantype.LoanType;
+import co.com.pragma.model.loanvalidation.events.request.ActiveLoanInfo;
 import co.com.pragma.model.status.Status;
 import co.com.pragma.r2dbc.entities.LoanApplicationEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
@@ -45,6 +46,8 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
                     .id(loanAppEntity.getStatusId())
                     .build();
             loanApplication.setStatus(status);
+            System.out.println("total_debt_from_bd: " + loanAppEntity.getTotalMonthlyDebtApprovedApplications());
+            loanApplication.setTotalMonthlyDebtApprovedApplications(loanAppEntity.getTotalMonthlyDebtApprovedApplications());
             return loanApplication;
         });
     }
@@ -62,6 +65,7 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
         loanAppEntity.setEmail(loanApplication.getEmail());
         loanAppEntity.setLoanTypeId(loanApplication.getLoanType().getId());
         loanAppEntity.setStatusId(loanApplication.getStatus().getId());
+        loanAppEntity.setTotalMonthlyDebtApprovedApplications(loanApplication.getTotalMonthlyDebtApprovedApplications());
         return loanAppEntity;
     }
 
@@ -89,5 +93,11 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
     @Override
     public Mono<Long> countLoanApplicationByStatusesIn(List<String> statuses) {
         return repository.countByStatusesIn(statuses);
+    }
+
+    @Override
+    public Flux<ActiveLoanInfo> findLoanApplicationByDocumentNumberAndStatus(String documentNumber, String status) {
+        return repository.findLoanApplicationEntitiesByDocumentNumberAndStatusName(documentNumber, status)
+                .map(entity -> mapper.map(entity, ActiveLoanInfo.class));
     }
 }

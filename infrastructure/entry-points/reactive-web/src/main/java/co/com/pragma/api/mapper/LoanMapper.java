@@ -16,6 +16,7 @@ public interface LoanMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "email", ignore = true)
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "totalMonthlyDebtApprovedApplications", ignore = true)
     @Mapping(target = "loanType", source = "loanTypeName", qualifiedByName = "StringToLoanType")
     LoanApplication toDomain(LoanRequest loanRequest);
 

@@ -18,8 +18,13 @@ adapter:
   sqs:
     region: "us-east-2"
     queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-application-status-queue"
-#    queueUrl: "http://localhost:4566/881799718010/loan-application-status-queue"
-#    endpoint: "http://localhost:4566"
+  #    queueUrl: "http://localhost:4566/881799718010/loan-application-status-queue"
+  #    endpoint: "http://localhost:4566"
+  sqsdebtcalculate:
+    region: "us-east-2"
+    queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-validation-requests-debt-capacity-queue"
+#    endpoint: ""
+
 management:
   health:
     circuitbreakers:

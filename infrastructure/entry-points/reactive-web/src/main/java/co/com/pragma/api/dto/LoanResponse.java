@@ -19,6 +19,8 @@ public record LoanResponse(
 
         LoanType loanType,
 
-        Status status
+        Status status,
+
+        BigDecimal totalMonthlyDebtApprovedApplications
 ) {
 }

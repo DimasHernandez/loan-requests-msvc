@@ -36,3 +36,5 @@ include ':metrics'
 project(':metrics').projectDir = file('./infrastructure/helpers/metrics')
 include ':sqs-sender'
 project(':sqs-sender').projectDir = file('./infrastructure/driven-adapters/sqs-sender')
+include ':lambda-debt-capacity'
+project(':lambda-debt-capacity').projectDir = file('./infrastructure/driven-adapters/lambda-debt-capacity')

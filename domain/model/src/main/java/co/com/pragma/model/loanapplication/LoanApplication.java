@@ -29,4 +29,6 @@ public class LoanApplication {
 
     private Status status;
 
+    private BigDecimal totalMonthlyDebtApprovedApplications;
+
 }
