@@ -11,9 +11,14 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
+@ToString
 public class LoanValidationResponse {
 
     private UUID loanId;
+
+    private String documentNumber;
+
+    private String fullName;
 
     private String result;
 

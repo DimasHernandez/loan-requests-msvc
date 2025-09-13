@@ -2,6 +2,7 @@ package co.com.pragma.model.exceptions.enums;
 
 public enum ErrorMessages {
 
+    LOAN_APPLICATION_NOT_FOUND("Solicitud de préstamo no encontrada"),
     STATUS_NOT_FOUND("Estado no encontrado"),
     AMOUNT_OUT_OF_RANGE("El monto no es válido"),
     TERM_OUT_OF_RANGE("El plazo establecido no es válido"),

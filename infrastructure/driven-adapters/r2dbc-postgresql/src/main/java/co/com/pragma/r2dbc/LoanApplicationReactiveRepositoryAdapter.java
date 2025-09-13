@@ -46,7 +46,6 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
                     .id(loanAppEntity.getStatusId())
                     .build();
             loanApplication.setStatus(status);
-            System.out.println("total_debt_from_bd: " + loanAppEntity.getTotalMonthlyDebtApprovedApplications());
             loanApplication.setTotalMonthlyDebtApprovedApplications(loanAppEntity.getTotalMonthlyDebtApprovedApplications());
             return loanApplication;
         });

@@ -54,8 +54,7 @@ public class LoanApplicationUseCase {
 
                                 loanApp.setId(savedLoanApp.getId());
 
-                                if (loanApplication.getLoanType().isAutomaticValidation()) {
-                                    System.out.println("Simulando envio de mensaje a SQS de AWS"); // TODO: delete this
+                                if (loanApp.getLoanType().isAutomaticValidation()) {
                                     return loanValidationUseCase.enqueueLoanValidation(loanApp, user)
                                             .thenReturn(loanApp);
                                 }

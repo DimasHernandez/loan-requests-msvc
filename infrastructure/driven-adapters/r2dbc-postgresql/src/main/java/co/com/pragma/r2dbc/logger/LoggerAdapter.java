@@ -14,6 +14,11 @@ public class LoggerAdapter implements LoggerPort {
     }
 
     @Override
+    public void warn(String message, Object... args) {
+        log.warn(message, args);
+    }
+
+    @Override
     public void error(String message, Throwable throwable) {
         log.error(throwable.getMessage(), throwable);
     }
