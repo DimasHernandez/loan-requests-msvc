@@ -46,7 +46,6 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
                     .id(loanAppEntity.getStatusId())
                     .build();
             loanApplication.setStatus(status);
-            loanApplication.setTotalMonthlyDebtApprovedApplications(loanAppEntity.getTotalMonthlyDebtApprovedApplications());
             return loanApplication;
         });
     }
@@ -64,7 +63,6 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
         loanAppEntity.setEmail(loanApplication.getEmail());
         loanAppEntity.setLoanTypeId(loanApplication.getLoanType().getId());
         loanAppEntity.setStatusId(loanApplication.getStatus().getId());
-        loanAppEntity.setTotalMonthlyDebtApprovedApplications(loanApplication.getTotalMonthlyDebtApprovedApplications());
         return loanAppEntity;
     }
 

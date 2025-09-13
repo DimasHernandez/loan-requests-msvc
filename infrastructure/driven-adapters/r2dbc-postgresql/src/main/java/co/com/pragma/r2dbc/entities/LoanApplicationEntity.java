@@ -35,7 +35,4 @@ public class LoanApplicationEntity {
 
     @Column("status_id")
     private UUID statusId;
-
-    @Column("total_month_debt_approved_applications")
-    private BigDecimal totalMonthlyDebtApprovedApplications;
 }

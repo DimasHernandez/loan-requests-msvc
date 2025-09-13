@@ -58,7 +58,6 @@ public class LoanApplicationUseCase {
                                     return loanValidationUseCase.enqueueLoanValidation(loanApp, user)
                                             .thenReturn(loanApp);
                                 }
-                                loanApp.setTotalMonthlyDebtApprovedApplications(savedLoanApp.getTotalMonthlyDebtApprovedApplications());
                                 return Mono.just(loanApp);
                             });
                 })
@@ -74,7 +73,6 @@ public class LoanApplicationUseCase {
                 .switchIfEmpty(Mono.error(new AccessDeniedException("No puedes crear préstamos a nombre de otro usuario")))
                 .map(user -> {
                             loanApplication.setEmail(user.getEmail());
-                            loanApplication.setTotalMonthlyDebtApprovedApplications(BigDecimal.ZERO);
                             return Tuples.of(loanApplication, user);
                         }
                 );
