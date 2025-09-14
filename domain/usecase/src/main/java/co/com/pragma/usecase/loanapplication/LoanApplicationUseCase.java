@@ -1,7 +1,9 @@
 package co.com.pragma.usecase.loanapplication;
 
 import co.com.pragma.model.common.PageResponse;
+import co.com.pragma.model.enums.STATES;
 import co.com.pragma.model.exceptions.*;
+import co.com.pragma.model.exceptions.enums.ErrorMessages;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.UpdatedLoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
@@ -29,8 +31,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class LoanApplicationUseCase {
 
-    private static final String DEFAULT_STATUS_LOAN = "PENDING_REVIEW";
-    private static final List<String> FINAL_LOAN_STATUSES = List.of("APPROVED", "REJECTED");
+    private static final String DEFAULT_STATUS_LOAN = STATES.PENDING_REVIEW.name();
+    private static final List<String> FINAL_LOAN_STATUSES = List.of(STATES.APPROVED.name(), STATES.REJECTED.name());
+    private static final String PUBLISHING_SUCCESSFUL_MESSAGE = "Loan Status Update Successful";
 
     private final LoanTypeRepository loanTypeRepository;
     private final StatusRepository statusRepository;
@@ -68,9 +71,9 @@ public class LoanApplicationUseCase {
 
     private Mono<Tuple2<LoanApplication, User>> searchUserAndAssignEmail(LoanApplication loanApplication, String email, String token) {
         return userRestConsumer.findUserByEmail(email, token)
-                .switchIfEmpty(Mono.error(new UserNotFoundException("Usuario no encontrado")))
+                .switchIfEmpty(Mono.error(new UserNotFoundException(ErrorMessages.USER_NOT_FOUND.getMessage())))
                 .filter(user -> user.getDocumentNumber().equals(loanApplication.getDocumentNumber()))
-                .switchIfEmpty(Mono.error(new AccessDeniedException("No puedes crear préstamos a nombre de otro usuario")))
+                .switchIfEmpty(Mono.error(new AccessDeniedException(ErrorMessages.ACCESS_DENIED.getMessage())))
                 .map(user -> {
                             loanApplication.setEmail(user.getEmail());
                             return Tuples.of(loanApplication, user);
@@ -80,13 +83,13 @@ public class LoanApplicationUseCase {
 
     private Mono<LoanApplication> assignLoanType(LoanApplication loanApplication) {
         return loanTypeRepository.findByName(loanApplication.getLoanType().getName())
-                .switchIfEmpty(Mono.error(new LoanTypeNotFoundException("Tipo de prestamo no encontrado")))
+                .switchIfEmpty(Mono.error(new LoanTypeNotFoundException(ErrorMessages.LOAN_TYPE_NOT_FOUND.getMessage())))
                 .flatMap(loanType -> {
                     if (!isAmountValid(loanApplication.getAmount(), loanType)) {
-                        return Mono.error(new AmountOutOfRangeException("El monto no es valido"));
+                        return Mono.error(new AmountOutOfRangeException(ErrorMessages.AMOUNT_OUT_RANGE.getMessage()));
                     }
                     if (!isTermValid(loanApplication.getTermMonth(), loanType)) {
-                        return Mono.error(new TermOutOfRangeException("El plazo establecido no es valido"));
+                        return Mono.error(new TermOutOfRangeException(ErrorMessages.TERM_OUT_RANGE.getMessage()));
                     }
                     loanApplication.setLoanType(loanType);
                     return Mono.just(loanApplication);
@@ -95,7 +98,7 @@ public class LoanApplicationUseCase {
 
     private Mono<LoanApplication> assignStatus(LoanApplication loanApplication) {
         return statusRepository.findByName(DEFAULT_STATUS_LOAN)
-                .switchIfEmpty(Mono.error(new StatusNotFoundException("Estado del prestamo no encontrado")))
+                .switchIfEmpty(Mono.error(new StatusNotFoundException(ErrorMessages.STATUS_NOT_FOUND.getMessage())))
                 .map(status -> {
                     loanApplication.setStatus(status);
                     return loanApplication;
@@ -108,7 +111,7 @@ public class LoanApplicationUseCase {
                 .flatMap(isLoanType -> {
                             if (Boolean.TRUE.equals(isLoanType)) {
                                 return Mono.error(new LoanRequestStatusAndTypeMismatchException(
-                                        "El usuario ya cuenta con una solicitud de préstamo en proceso del mismo tipo"));
+                                        ErrorMessages.LOAN_REQUEST_STATUS_MISMATCH.getMessage()));
                             }
                             return Mono.just(loanApp);
                         }
@@ -166,15 +169,15 @@ public class LoanApplicationUseCase {
     public Mono<UpdatedLoanApplication> updatedLoanApplicationStatus(UUID loanApplicationId, String statusToUpdated) {
 
         if (!FINAL_LOAN_STATUSES.contains(statusToUpdated)) {
-            return Mono.error(new FinalStateNotAllowedException("Estado no permitido. [APPROVED, REJECTED]"));
+            return Mono.error(new FinalStateNotAllowedException(ErrorMessages.FINAL_STATE_NOT_ALLOWED.getMessage()));
         }
 
         return transactionalWrapper.transactional(
                 Mono.zip(
                                 loanApplicationRepository.findLoanApplicationById(loanApplicationId)
-                                        .switchIfEmpty(Mono.error(new LoanApplicationNotFoundException("Solicitud de préstamo no encontrada"))),
+                                        .switchIfEmpty(Mono.error(new LoanApplicationNotFoundException(ErrorMessages.LOAN_APPLICATION_NOT_FOUND.getMessage()))),
                                 statusRepository.findByName(statusToUpdated)
-                                        .switchIfEmpty(Mono.error(new StatusNotFoundException("Estado no encontrado")))
+                                        .switchIfEmpty(Mono.error(new StatusNotFoundException(ErrorMessages.STATUS_NOT_FOUND.getMessage())))
                         )
                         .flatMap(tuple -> {
                             LoanApplication loanAppBd = tuple.getT1();
@@ -189,8 +192,8 @@ public class LoanApplicationUseCase {
                                     Status newStatus = tuple.getT3();
 
                                     if (FINAL_LOAN_STATUSES.contains(previousStatus.getName())) {
-                                        return Mono.error(new FinalStateNotAllowedException("La solicitud de préstamo ya se " +
-                                                "encuentra en estado final " + previousStatus.getName()));
+                                        return Mono.error(new FinalStateNotAllowedException(ErrorMessages.FINAL_STATE_NOT_ALLOWED_CUSTOM.getMessage()
+                                                + previousStatus.getName()));
                                     }
 
                                     loanApp.setStatus(newStatus);
@@ -201,11 +204,11 @@ public class LoanApplicationUseCase {
                                                         .email(updatedLoan.getEmail())
                                                         .previousStatus(previousStatus.getName())
                                                         .newStatus(newStatus.getName())
-                                                        .message("Loan Status Update Successful")
+                                                        .message(PUBLISHING_SUCCESSFUL_MESSAGE)
                                                         .build();
 
                                                 return loanStatusMessageGateway.send(response)
-                                                        .doOnSuccess(msgId -> logger.info("Loan status event sent to SQS with message_id= {}", msgId))
+                                                        .doOnSuccess(msgId -> logger.info("Loan status event sent to SQS with message_id: {}", msgId))
                                                         .doOnError(e -> logger.error("Failed to send loan status event to SQS", e))
                                                         .thenReturn(response);
 

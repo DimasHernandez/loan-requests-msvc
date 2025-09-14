@@ -62,7 +62,7 @@ public class LoanValidationUseCase {
         String statusFinal = loanValidationResponse.getResult();
         UUID loanId = loanValidationResponse.getLoanId();
 
-        if (shouldSkipProcessing(statusFinal, loanId)) {
+        if (shouldSkipProcessingMessage(statusFinal, loanId)) {
             return Mono.empty();
         }
 
@@ -78,12 +78,13 @@ public class LoanValidationUseCase {
 
                     loanApp.setStatus(status);
                     return loanApplicationRepository.saveLoanApplication(loanApp)
-                            .doOnSuccess(loan -> logger.info("Updating request status {} in the database", loan.getId()))
+                            .doOnSuccess(loan -> logger.info("Updating request loan_id: {} " +
+                                    "with status {} in the database", loan.getId(), status.getName()))
                             .then();
                 });
     }
 
-    private boolean shouldSkipProcessing(String status, UUID loanId) {
+    private boolean shouldSkipProcessingMessage(String status, UUID loanId) {
         if (status == null || status.trim().isEmpty() || loanId == null) {
             logger.warn("Status null/empty {},  or loan_id null {}", status, loanId);
             return true;
