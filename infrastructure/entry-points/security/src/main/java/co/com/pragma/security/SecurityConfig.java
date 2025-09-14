@@ -1,5 +1,6 @@
 package co.com.pragma.security;
 
+import co.com.pragma.security.enums.Role;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -37,10 +38,10 @@ public class SecurityConfig {
                 .securityContextRepository(jwtSecurityContextRepository)
                 .authorizeExchange(exchanges ->
                         exchanges
-                                .pathMatchers(HttpMethod.POST, "/api/v1/loans").hasRole("APPLICANT")
-                                .pathMatchers(HttpMethod.GET, "/api/v1/loans").hasAnyRole("ADMIN", "ADVISOR")
-                                .pathMatchers(HttpMethod.POST, "/api/v1/users/emails/batch").hasAnyRole("ADMIN", "ADVISOR")
-                                .pathMatchers(HttpMethod.PUT, "/api/v1/loans/{loanApplicationId}").hasRole("ADVISOR")
+                                .pathMatchers(HttpMethod.POST, "/api/v1/loans").hasRole(Role.APPLICANT.name())
+                                .pathMatchers(HttpMethod.GET, "/api/v1/loans").hasAnyRole(Role.ADMIN.name(), Role.ADVISOR.name())
+                                .pathMatchers(HttpMethod.POST, "/api/v1/users/emails/batch").hasAnyRole(Role.ADMIN.name(), Role.ADVISOR.name())
+                                .pathMatchers(HttpMethod.PUT, "/api/v1/loans/{loanApplicationId}").hasRole(Role.ADVISOR.name())
                                 .pathMatchers("/webjars/swagger-ui/index.html").permitAll()
                                 .pathMatchers("/swagger-ui.html").permitAll()
                                 .pathMatchers("/swagger-ui/**").permitAll()

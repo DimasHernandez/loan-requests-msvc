@@ -4,6 +4,7 @@ import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
 import co.com.pragma.model.loanreviewitem.LoanReviewItem;
 import co.com.pragma.model.loantype.LoanType;
+import co.com.pragma.model.loanvalidation.events.request.ActiveLoanInfo;
 import co.com.pragma.model.status.Status;
 import co.com.pragma.r2dbc.entities.LoanApplicationEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
@@ -89,5 +90,11 @@ public class LoanApplicationReactiveRepositoryAdapter extends ReactiveAdapterOpe
     @Override
     public Mono<Long> countLoanApplicationByStatusesIn(List<String> statuses) {
         return repository.countByStatusesIn(statuses);
+    }
+
+    @Override
+    public Flux<ActiveLoanInfo> findLoanApplicationByDocumentNumberAndStatus(String documentNumber, String status) {
+        return repository.findLoanApplicationEntitiesByDocumentNumberAndStatusName(documentNumber, status)
+                .map(entity -> mapper.map(entity, ActiveLoanInfo.class));
     }
 }

@@ -2,6 +2,7 @@ package co.com.pragma.model.loanapplication.gateways;
 
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanreviewitem.LoanReviewItem;
+import co.com.pragma.model.loanvalidation.events.request.ActiveLoanInfo;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -19,4 +20,6 @@ public interface LoanApplicationRepository {
     Flux<LoanReviewItem> findLoanApplicationWithDetails(List<String> statuses, int limit, int offset);
 
     Mono<Long> countLoanApplicationByStatusesIn(List<String> statuses);
+
+    Flux<ActiveLoanInfo> findLoanApplicationByDocumentNumberAndStatus(String documentNumber, String status);
 }

@@ -18,8 +18,9 @@ adapter:
   sqs:
     region: "us-east-2"
     queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-application-status-queue"
-#    queueUrl: "http://localhost:4566/881799718010/loan-application-status-queue"
-#    endpoint: "http://localhost:4566"
+  sqsdebtcalculate:
+    region: "us-east-2"
+    queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-validation-requests-debt-capacity-queue"
 management:
   health:
     circuitbreakers:
@@ -71,3 +72,12 @@ security:
   jwt:
     secretKey: "${SUPER_SECRET_KEY:\"VC_ayQoxqq_7BcqwcYplfPc5Au38nbm8Z_u5ReEHVE0=\"\
       }"
+entrypoint:
+  sqs:
+    region: "us-east-2"
+#    endpoint: "http://localhost:4566"
+    queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-validation-results-debt-capacity-queue"
+    waitTimeSeconds: 20
+    maxNumberOfMessages: 10
+    visibilityTimeoutSeconds: 10
+    numberOfThreads: 1

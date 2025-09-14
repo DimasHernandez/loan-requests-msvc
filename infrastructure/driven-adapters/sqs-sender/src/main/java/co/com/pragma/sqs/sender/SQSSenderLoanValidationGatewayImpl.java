@@ -1,8 +1,8 @@
 package co.com.pragma.sqs.sender;
 
-import co.com.pragma.model.loanapplication.UpdatedLoanApplication;
-import co.com.pragma.model.loanapplication.gateways.LoanStatusMessageGateway;
-import co.com.pragma.sqs.sender.config.SQSSenderProperties;
+import co.com.pragma.model.loanvalidation.events.request.LoanValidationRequest;
+import co.com.pragma.model.loanvalidation.gateway.LoanValidationGateway;
+import co.com.pragma.sqs.sender.config.SQSSenderLoanValidationProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.log4j.Log4j2;
@@ -15,27 +15,30 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 
 @Service
 @Log4j2
-//@RequiredArgsConstructor
-public class SQSSender implements LoanStatusMessageGateway {
+public class SQSSenderLoanValidationGatewayImpl implements LoanValidationGateway {
 
+    private final SQSSenderLoanValidationProperties properties;
     private final SqsAsyncClient client;
-    private final SQSSenderProperties properties;
     private final ObjectMapper mapper;
 
-    public SQSSender(SQSSenderProperties properties, @Qualifier("configSqs") SqsAsyncClient client, ObjectMapper mapper) {
+    public SQSSenderLoanValidationGatewayImpl(SQSSenderLoanValidationProperties properties,
+                                              @Qualifier("configSqsLoanValidation") SqsAsyncClient client,
+                                              ObjectMapper mapper) {
         this.properties = properties;
         this.client = client;
         this.mapper = mapper;
     }
 
-    public Mono<String> send(UpdatedLoanApplication event) {
+
+    @Override
+    public Mono<String> sendToQueue(LoanValidationRequest event) {
         return Mono.fromCallable(() -> buildRequest(event))
                 .flatMap(request -> Mono.fromFuture(client.sendMessage(request)))
                 .doOnNext(response -> log.debug("Message sent {}", response.messageId()))
                 .map(SendMessageResponse::messageId);
     }
 
-    private SendMessageRequest buildRequest(UpdatedLoanApplication event) throws JsonProcessingException {
+    private SendMessageRequest buildRequest(LoanValidationRequest event) throws JsonProcessingException {
         return SendMessageRequest.builder()
                 .queueUrl(properties.queueUrl())
                 .messageBody(mapper.writeValueAsString(event))

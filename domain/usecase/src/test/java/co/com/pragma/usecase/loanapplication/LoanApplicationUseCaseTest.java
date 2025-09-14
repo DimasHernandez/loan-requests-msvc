@@ -17,6 +17,7 @@ import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.enums.DocumentType;
 import co.com.pragma.model.user.gateways.UserRestConsumerPort;
 import co.com.pragma.model.userbasicinfo.UserBasicInfo;
+import co.com.pragma.usecase.loanvalidation.LoanValidationUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,6 +60,9 @@ class LoanApplicationUseCaseTest {
     private LoanStatusMessageGateway loanStatusMessageGateway;
 
     @Mock
+    LoanValidationUseCase loanValidationUseCase;
+
+    @Mock
     private LoggerPort logger;
 
 
@@ -67,17 +71,48 @@ class LoanApplicationUseCaseTest {
     @BeforeEach
     void setup() {
         loanApplicationUseCase = new LoanApplicationUseCase(loanTypeRepository, statusRepository, loanApplicationRepository,
-                userRestConsumer, transactionalWrapper, loanStatusMessageGateway, logger);
+                userRestConsumer, transactionalWrapper, loanStatusMessageGateway, loanValidationUseCase, logger);
     }
 
     @Test
-    void shouldSaveLoanApplication() {
+    void shouldSaveLoanApplicationWithIsAutomaticValidation() {
         // Arrange
         LoanApplication loanApp = loanApplicationMock();
         String emailFromToke = "pepe@example.com";
         String token = tokenMock();
         User user = userMock();
-        LoanType loanType = loanTypeMock();
+        LoanType loanType = loanTypeWithIsAutomaticValidationMock();
+        Status status = statusPendingReviewMock();
+
+        // Mock reactive repositories
+        when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
+        when(loanTypeRepository.findByName(any(String.class))).thenReturn(Mono.just(loanType));
+        when(statusRepository.findByName(any(String.class))).thenReturn(Mono.just(status));
+        when(loanApplicationRepository.existsUserAndLoanTypeAndStatus(any(String.class), any(UUID.class), any(UUID.class)))
+                .thenReturn(Mono.just(false));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class))).thenReturn(Mono.just(loanApp));
+        when(loanValidationUseCase.enqueueLoanValidation(any(LoanApplication.class), any(User.class)))
+                .thenReturn(Mono.just(loanApp));
+
+        // Act
+        Mono<LoanApplication> result = loanApplicationUseCase.saveLoanApplication(loanApp, emailFromToke, token);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectNextMatches(savedLoanApp ->
+                        savedLoanApp.getId().equals(UUID.fromString("e8c49caa-e6ab-4e58-a0a9-e221bc152ec6")) &&
+                                savedLoanApp.getStatus().getId().equals(UUID.fromString("70e91cdf-07dd-404e-bbc9-27646f3030f9")))
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldSaveLoanApplicationWithIsNotAutomaticValidation() {
+        // Arrange
+        LoanApplication loanApp = loanApplicationMock();
+        String emailFromToke = "pepe@example.com";
+        String token = tokenMock();
+        User user = userMock();
+        LoanType loanType = loanTypeWithIsNotAutomaticValidationMock();
         Status status = statusPendingReviewMock();
 
         // Mock reactive repositories
@@ -174,7 +209,7 @@ class LoanApplicationUseCaseTest {
         String emailFromToke = "pepe@example.com";
         String token = tokenMock();
         loanApp.setAmount(new BigDecimal(amount));
-        LoanType loanType = loanTypeMock();
+        LoanType loanType = loanTypeWithIsAutomaticValidationMock();
         User user = userMock();
 
         // Mock reactive repositories
@@ -200,7 +235,7 @@ class LoanApplicationUseCaseTest {
         String emailFromToke = "pepe@example.com";
         String token = tokenMock();
         loanApp.setTermMonth(termMont);
-        LoanType loanType = loanTypeMock();
+        LoanType loanType = loanTypeWithIsAutomaticValidationMock();
         User user = userMock();
 
         // Mock reactive repositories
@@ -225,7 +260,7 @@ class LoanApplicationUseCaseTest {
         String emailFromToke = "pepe@example.com";
         String token = tokenMock();
         User user = userMock();
-        LoanType loanType = loanTypeMock();
+        LoanType loanType = loanTypeWithIsAutomaticValidationMock();
 
         // Mock reactive repositories
         when(userRestConsumer.findUserByEmail(any(String.class), any(String.class))).thenReturn(Mono.just(user));
@@ -250,7 +285,7 @@ class LoanApplicationUseCaseTest {
         String emailFromToke = "pepe@example.com";
         String token = tokenMock();
         User user = userMock();
-        LoanType loanType = loanTypeMock();
+        LoanType loanType = loanTypeWithIsAutomaticValidationMock();
         Status status = statusPendingReviewMock();
 
         // Mock reactive repositories
@@ -411,7 +446,7 @@ class LoanApplicationUseCaseTest {
         // Assert
         StepVerifier.create(result)
                 .expectErrorMatches(throwable -> throwable instanceof StatusNotFoundException &&
-                        throwable.getMessage().equals("Estado no encontrado"))
+                        throwable.getMessage().equals("Estado del prestamo no encontrado"))
                 .verify();
     }
 
@@ -450,12 +485,12 @@ class LoanApplicationUseCaseTest {
                 .amount(new BigDecimal("650000.00"))
                 .termMonth(12)
                 .email("pepe@example.com")
-                .loanType(loanTypeMock())
+                .loanType(loanTypeWithIsAutomaticValidationMock())
                 .status(statusPendingReviewMock())
                 .build();
     }
 
-    private LoanType loanTypeMock() {
+    private LoanType loanTypeWithIsAutomaticValidationMock() {
         return LoanType.builder()
                 .id(UUID.fromString("5060d735-10c0-4f27-bb39-76a15de8cf5c"))
                 .name("MICROCREDIT")
@@ -465,6 +500,19 @@ class LoanApplicationUseCaseTest {
                 .termMonthMax(24)
                 .interestRate(new BigDecimal("0.0250"))
                 .automaticValidation(true)
+                .build();
+    }
+
+    private LoanType loanTypeWithIsNotAutomaticValidationMock() {
+        return LoanType.builder()
+                .id(UUID.fromString("8f3d23ed-e7a0-48e9-b53b-5da21b2a5472"))
+                .name("FREE_INVESTMENT")
+                .amountMin(new BigDecimal("500000.00"))
+                .amountMax(new BigDecimal("99000000.00"))
+                .termMonthMin(10)
+                .termMonthMax(240)
+                .interestRate(new BigDecimal("0.0235"))
+                .automaticValidation(false)
                 .build();
     }
 
@@ -480,7 +528,7 @@ class LoanApplicationUseCaseTest {
         return Status.builder()
                 .id(UUID.randomUUID())
                 .name(statusFinal)
-                .description("Sattus request")
+                .description("Status request")
                 .build();
     }
 

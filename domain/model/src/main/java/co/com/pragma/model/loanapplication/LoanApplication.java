@@ -28,5 +28,4 @@ public class LoanApplication {
     private LoanType loanType;
 
     private Status status;
-
 }
