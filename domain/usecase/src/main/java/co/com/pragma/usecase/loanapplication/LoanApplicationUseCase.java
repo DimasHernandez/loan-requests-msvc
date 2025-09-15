@@ -229,12 +229,15 @@ public class LoanApplicationUseCase {
                     .loanId(updatedLoan.getId())
                     .documentNumber(updatedLoan.getDocumentNumber())
                     .status(newStatus.getName())
+                    .amount(updatedLoan.getAmount())
                     .updatedAt(LocalDateTime.now())
                     .build();
 
             return loanReportMessageGateway.sendToQueueApprovedLoanReport(loanReportEvent)
-                    .doOnSuccess(msgId -> logger.info("sending loan application approved loan report successfully with message_id: {}", msgId))
-                    .doOnError(e -> logger.error("sending loan application approved loan report failed", e));
+                    .doOnSuccess(msgId -> logger.info("SQS - [Manual update flow] - Sending loan application " +
+                            "approved loan-report-queue successfully with message_id: {}", msgId))
+                    .doOnError(e -> logger.error("SQS - [Manual update flow] - Sending loan application " +
+                            "approved loan report failed", e));
         }
         return Mono.empty();
     }

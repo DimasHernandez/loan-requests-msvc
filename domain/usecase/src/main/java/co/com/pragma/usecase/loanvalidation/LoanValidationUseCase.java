@@ -1,6 +1,8 @@
 package co.com.pragma.usecase.loanvalidation;
 
 import co.com.pragma.model.enums.STATES;
+import co.com.pragma.model.events.reports.LoanReportEvent;
+import co.com.pragma.model.events.reports.gateway.LoanReportMessageGateway;
 import co.com.pragma.model.exceptions.LoanApplicationNotFoundException;
 import co.com.pragma.model.exceptions.StatusNotFoundException;
 import co.com.pragma.model.exceptions.enums.ErrorMessages;
@@ -16,6 +18,7 @@ import co.com.pragma.model.user.User;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +31,7 @@ public class LoanValidationUseCase {
     private final LoanValidationGateway loanValidationGateway;
     private final LoanApplicationRepository loanApplicationRepository;
     private final StatusRepository statusRepository;
+    private final LoanReportMessageGateway loanReportMessageGateway;
     private final LoggerPort logger;
 
     public Mono<LoanApplication> enqueueLoanValidation(LoanApplication loanApp, User user) {
@@ -80,6 +84,7 @@ public class LoanValidationUseCase {
                     return loanApplicationRepository.saveLoanApplication(loanApp)
                             .doOnSuccess(loan -> logger.info("Updating request loan_id: {} " +
                                     "with status {} in the database", loan.getId(), status.getName()))
+                            .then(Mono.defer(() -> sendApprovedReportIfNeeded(loanApp, status)))
                             .then();
                 });
     }
@@ -94,5 +99,25 @@ public class LoanValidationUseCase {
             return true;
         }
         return false;
+    }
+
+    private Mono<String> sendApprovedReportIfNeeded(LoanApplication updatedLoan, Status newStatus) {
+        if (!STATES.APPROVED.name().equals(newStatus.getName())) {
+            return Mono.empty();
+        }
+        LoanReportEvent loanReportEvent = LoanReportEvent.builder()
+                .loanId(updatedLoan.getId())
+                .documentNumber(updatedLoan.getDocumentNumber())
+                .status(newStatus.getName())
+                .amount(updatedLoan.getAmount())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        return loanReportMessageGateway.sendToQueueApprovedLoanReport(loanReportEvent)
+                .doOnSuccess(msgId -> logger.info("SQS - [Automatic update flow] - Sending loan " +
+                        "application approved loan-report-queue successfully with message_id: {}", msgId))
+                .doOnError(e -> logger.error("SQS - [Automatic update flow] - Sending loan application " +
+                        "approved loan report failed", e));
+
     }
 }

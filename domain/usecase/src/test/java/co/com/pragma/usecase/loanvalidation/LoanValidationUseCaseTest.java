@@ -1,5 +1,7 @@
 package co.com.pragma.usecase.loanvalidation;
 
+import co.com.pragma.model.events.reports.LoanReportEvent;
+import co.com.pragma.model.events.reports.gateway.LoanReportMessageGateway;
 import co.com.pragma.model.exceptions.StatusNotFoundException;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.gateways.LoanApplicationRepository;
@@ -48,6 +50,9 @@ class LoanValidationUseCaseTest {
 
     @Mock
     private StatusRepository statusRepository;
+
+    @Mock
+    private LoanReportMessageGateway loanReportMessageGateway;
 
     @Mock
     private LoggerPort logger;
@@ -111,11 +116,15 @@ class LoanValidationUseCaseTest {
         LoanValidationResponse loanValidationResponse = loanValidationResponseMock();
         LoanApplication loanApp = loanApplicationMock();
         Status status = statusFinalMock(statusFinal);
+        String messageId = messageIdMock();
 
         // when reactive mocks
         when(loanApplicationRepository.findLoanApplicationById(any(UUID.class))).thenReturn(Mono.just(loanApp));
         when(statusRepository.findByName(any(String.class))).thenReturn(Mono.just(status));
         when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class))).thenReturn(Mono.just(loanApp));
+        if (statusFinal.equals("APPROVED")) {
+            when(loanReportMessageGateway.sendToQueueApprovedLoanReport(any(LoanReportEvent.class))).thenReturn(Mono.just(messageId));
+        }
 
         // Assert
         StepVerifier.create(loanValidationUseCase.processMessageResultQueue(loanValidationResponse))
