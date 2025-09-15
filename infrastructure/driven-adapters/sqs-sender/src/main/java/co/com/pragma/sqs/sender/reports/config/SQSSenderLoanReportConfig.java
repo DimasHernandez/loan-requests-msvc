@@ -1,4 +1,5 @@
-package co.com.pragma.sqs.sender.config;
+package co.com.pragma.sqs.sender.reports.config;
+
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,10 +11,10 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import java.net.URI;
 
 @Configuration
-public class SQSSenderLoanValidationConfig {
+public class SQSSenderLoanReportConfig {
 
-    @Bean("configSqsLoanValidation")
-    public SqsAsyncClient configSqs(SQSSenderLoanValidationProperties properties, MetricPublisher publisher) {
+    @Bean("configSqsLoanReport")
+    public SqsAsyncClient configSqs(SQSSenderLoanReportProperties properties, MetricPublisher publisher) {
         return SqsAsyncClient.builder()
                 .endpointOverride(resolveEndpoint(properties))
                 .region(Region.of(properties.region()))
@@ -21,6 +22,7 @@ public class SQSSenderLoanValidationConfig {
                 .credentialsProvider(getProviderChain())
                 .build();
     }
+
 
     private AwsCredentialsProviderChain getProviderChain() {
         return AwsCredentialsProviderChain.builder()
@@ -33,7 +35,7 @@ public class SQSSenderLoanValidationConfig {
                 .build();
     }
 
-    private URI resolveEndpoint(SQSSenderLoanValidationProperties properties) {
+    private URI resolveEndpoint(SQSSenderLoanReportProperties properties) {
         if (properties.endpoint() != null) {
             return URI.create(properties.endpoint());
         }

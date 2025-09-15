@@ -1,6 +1,8 @@
 package co.com.pragma.usecase.loanapplication;
 
 import co.com.pragma.model.common.PageResponse;
+import co.com.pragma.model.events.reports.LoanReportEvent;
+import co.com.pragma.model.events.reports.gateway.LoanReportMessageGateway;
 import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.loanapplication.LoanApplication;
 import co.com.pragma.model.loanapplication.UpdatedLoanApplication;
@@ -60,6 +62,9 @@ class LoanApplicationUseCaseTest {
     private LoanStatusMessageGateway loanStatusMessageGateway;
 
     @Mock
+    private LoanReportMessageGateway loanReportMessageGateway;
+
+    @Mock
     LoanValidationUseCase loanValidationUseCase;
 
     @Mock
@@ -71,7 +76,7 @@ class LoanApplicationUseCaseTest {
     @BeforeEach
     void setup() {
         loanApplicationUseCase = new LoanApplicationUseCase(loanTypeRepository, statusRepository, loanApplicationRepository,
-                userRestConsumer, transactionalWrapper, loanStatusMessageGateway, loanValidationUseCase, logger);
+                userRestConsumer, transactionalWrapper, loanStatusMessageGateway, loanReportMessageGateway, loanValidationUseCase, logger);
     }
 
     @Test
@@ -357,8 +362,42 @@ class LoanApplicationUseCaseTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"APPROVED", "REJECTED"})
-    void shouldReturnUpdatedLoanApplicationSuccessfully(String statusFinal) {
+    @ValueSource(strings = {"APPROVED"})
+    void shouldReturnUpdatedLoanApplicationSuccessfullyWithApprovedStatus(String statusFinal) {
+        // Arrange
+        UUID loanId = UUID.fromString("e8c49caa-e6ab-4e58-a0a9-e221bc152ec6");
+        LoanApplication loanApp = loanApplicationMock();
+        Status newStatus = statusFinalMock(statusFinal);
+        Status oldStatus = statusPendingReviewMock();
+        String messageId = "1111111";
+
+        // When reactive repositories
+        when(transactionalWrapper.transactional(any(Mono.class)))
+                .thenAnswer(invocationOnMock -> invocationOnMock.getArguments()[0]);
+        when(loanApplicationRepository.findLoanApplicationById(any(UUID.class))).thenReturn(Mono.just(loanApp));
+        when(statusRepository.findByName(any(String.class))).thenReturn(Mono.just(newStatus));
+        when(statusRepository.findStatusById(any(UUID.class))).thenReturn(Mono.just(oldStatus));
+        when(loanApplicationRepository.saveLoanApplication(any(LoanApplication.class))).thenReturn(Mono.just(loanApp));
+        when(loanStatusMessageGateway.send(any(UpdatedLoanApplication.class)))
+                .thenReturn(Mono.just(messageId));
+        when(loanReportMessageGateway.sendToQueueApprovedLoanReport(any(LoanReportEvent.class)))
+                .thenReturn(Mono.just(messageId.concat("2222")));
+
+        // Act
+        Mono<UpdatedLoanApplication> result = loanApplicationUseCase.updatedLoanApplicationStatus(loanId, statusFinal);
+
+        // Assert
+        StepVerifier.create(result)
+                .expectNextMatches(updatedLoan ->
+                        updatedLoan.getId().equals(UUID.fromString("e8c49caa-e6ab-4e58-a0a9-e221bc152ec6")) &&
+                                updatedLoan.getPreviousStatus().equals(oldStatus.getName()) &&
+                                updatedLoan.getNewStatus().equals(newStatus.getName()))
+                .verifyComplete();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"REJECTED"})
+    void shouldReturnUpdatedLoanApplicationSuccessfullyWithRejectedStatus(String statusFinal) {
         // Arrange
         UUID loanId = UUID.fromString("e8c49caa-e6ab-4e58-a0a9-e221bc152ec6");
         LoanApplication loanApp = loanApplicationMock();
