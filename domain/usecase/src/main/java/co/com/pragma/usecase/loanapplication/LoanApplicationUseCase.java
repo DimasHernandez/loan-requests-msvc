@@ -2,6 +2,8 @@ package co.com.pragma.usecase.loanapplication;
 
 import co.com.pragma.model.common.PageResponse;
 import co.com.pragma.model.enums.STATES;
+import co.com.pragma.model.events.reports.LoanReportEvent;
+import co.com.pragma.model.events.reports.gateway.LoanReportMessageGateway;
 import co.com.pragma.model.exceptions.*;
 import co.com.pragma.model.exceptions.enums.ErrorMessages;
 import co.com.pragma.model.loanapplication.LoanApplication;
@@ -22,9 +24,11 @@ import co.com.pragma.usecase.loanvalidation.LoanValidationUseCase;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,6 +45,7 @@ public class LoanApplicationUseCase {
     private final UserRestConsumerPort userRestConsumer;
     private final TransactionalWrapper transactionalWrapper;
     private final LoanStatusMessageGateway loanStatusMessageGateway;
+    private final LoanReportMessageGateway loanReportMessageGateway;
     private final LoanValidationUseCase loanValidationUseCase;
     private final LoggerPort logger;
 
@@ -179,43 +184,62 @@ public class LoanApplicationUseCase {
                                 statusRepository.findByName(statusToUpdated)
                                         .switchIfEmpty(Mono.error(new StatusNotFoundException(ErrorMessages.STATUS_NOT_FOUND.getMessage())))
                         )
-                        .flatMap(tuple -> {
-                            LoanApplication loanAppBd = tuple.getT1();
-                            Status newStatus = tuple.getT2();
-
-                            return statusRepository.findStatusById(loanAppBd.getStatus().getId())
-                                    .map(previousStatus -> Tuples.of(loanAppBd, previousStatus, newStatus));
-                        })
-                        .flatMap(tuple -> {
-                                    LoanApplication loanApp = tuple.getT1();
-                                    Status previousStatus = tuple.getT2();
-                                    Status newStatus = tuple.getT3();
-
-                                    if (FINAL_LOAN_STATUSES.contains(previousStatus.getName())) {
-                                        return Mono.error(new FinalStateNotAllowedException(ErrorMessages.FINAL_STATE_NOT_ALLOWED_CUSTOM.getMessage()
-                                                + previousStatus.getName()));
-                                    }
-
-                                    loanApp.setStatus(newStatus);
-                                    return loanApplicationRepository.saveLoanApplication(loanApp)
-                                            .flatMap(updatedLoan -> {
-                                                UpdatedLoanApplication response = new UpdatedLoanApplication().toBuilder()
-                                                        .id(updatedLoan.getId())
-                                                        .email(updatedLoan.getEmail())
-                                                        .previousStatus(previousStatus.getName())
-                                                        .newStatus(newStatus.getName())
-                                                        .message(PUBLISHING_SUCCESSFUL_MESSAGE)
-                                                        .build();
-
-                                                return loanStatusMessageGateway.send(response)
-                                                        .doOnSuccess(msgId -> logger.info("Loan status event sent to SQS with message_id: {}", msgId))
-                                                        .doOnError(e -> logger.error("Failed to send loan status event to SQS", e))
-                                                        .thenReturn(response);
-
-                                            });
-                                }
-                        )
+                        .flatMap(tuple -> buildTupleWithPreviousStatus(tuple.getT1(), tuple.getT2()))
+                        .flatMap(tuple -> processUpdate(tuple.getT1(), tuple.getT2(), tuple.getT3()))
         );
+    }
+
+    private Mono<Tuple3<LoanApplication, Status, Status>> buildTupleWithPreviousStatus(LoanApplication loanAppBd, Status newStatus) {
+        return statusRepository.findStatusById(loanAppBd.getStatus().getId())
+                .map(previousStatus -> Tuples.of(loanAppBd, previousStatus, newStatus));
+    }
+
+    private Mono<UpdatedLoanApplication> processUpdate(LoanApplication loanApp, Status previousStatus, Status newStatus) {
+        if (FINAL_LOAN_STATUSES.contains(previousStatus.getName())) {
+            return Mono.error(new FinalStateNotAllowedException(ErrorMessages.FINAL_STATE_NOT_ALLOWED_CUSTOM.getMessage()
+                    + previousStatus.getName()));
+        }
+
+        loanApp.setStatus(newStatus);
+        return loanApplicationRepository.saveLoanApplication(loanApp)
+                .flatMap(updatedLoan -> {
+                    UpdatedLoanApplication response = buildUpdatedLoanApplication(updatedLoan, previousStatus, newStatus);
+
+                    return loanStatusMessageGateway.send(response)
+                            .doOnSuccess(msgId -> logger.info("Loan status event sent to SQS with message_id: {}", msgId))
+                            .doOnError(e -> logger.error("Failed to send loan status event to SQS", e))
+                            .then(Mono.defer(() -> sendApprovedReportIfNeeded(updatedLoan, newStatus)))
+                            .thenReturn(response);
+                });
+    }
+
+    private UpdatedLoanApplication buildUpdatedLoanApplication(LoanApplication updatedLoan, Status previousStatus, Status newStatus) {
+        return UpdatedLoanApplication.builder()
+                .id(updatedLoan.getId())
+                .email(updatedLoan.getEmail())
+                .previousStatus(previousStatus.getName())
+                .newStatus(newStatus.getName())
+                .message(PUBLISHING_SUCCESSFUL_MESSAGE)
+                .build();
+    }
+
+    private Mono<String> sendApprovedReportIfNeeded(LoanApplication updatedLoan, Status newStatus) {
+        if (STATES.APPROVED.name().equals(newStatus.getName())) {
+            LoanReportEvent loanReportEvent = LoanReportEvent.builder()
+                    .loanId(updatedLoan.getId())
+                    .documentNumber(updatedLoan.getDocumentNumber())
+                    .status(newStatus.getName())
+                    .amount(updatedLoan.getAmount())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            return loanReportMessageGateway.sendToQueueApprovedLoanReport(loanReportEvent)
+                    .doOnSuccess(msgId -> logger.info("SQS - [Manual update flow] - Sending loan application " +
+                            "approved loan-report-queue successfully with message_id: {}", msgId))
+                    .doOnError(e -> logger.error("SQS - [Manual update flow] - Sending loan application " +
+                            "approved loan report failed", e));
+        }
+        return Mono.empty();
     }
 
 }

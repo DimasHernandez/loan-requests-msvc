@@ -21,6 +21,9 @@ adapter:
   sqsdebtcalculate:
     region: "us-east-2"
     queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-validation-requests-debt-capacity-queue"
+  sqsapprovedloanreports:
+    region: "us-east-2"
+    queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/approved-loan-applications-report-queue"
 management:
   health:
     circuitbreakers:

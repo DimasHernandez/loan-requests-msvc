@@ -106,6 +106,13 @@ public class LoanRouterRest {
                             operationId = "UpdateStatusLoanApplication",
                             summary = "Update the status of a request",
                             description = "The user advisor wants to update the status of a loan application.",
+                            parameters = {
+                                    @Parameter(
+                                            name = "loanApplicationId",
+                                            description = "Unique loan application identifier",
+                                            in = ParameterIn.PATH
+                                    )
+                            },
                             tags = {"LoanApplication"},
                             requestBody = @RequestBody(
                                     required = true,

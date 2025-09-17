@@ -24,7 +24,7 @@ public enum ErrorMessages {
 
     // 404
     LOAN_APPLICATION_NOT_FOUND("LOAN_APP_001", "Solicitud de préstamo no encontrada"),
-    STATUS_NOT_FOUND("STATUS_001", ""),
+    STATUS_NOT_FOUND("STATUS_001", "Estado del prestamo no encontrado"),
     USER_NOT_FOUND("USR_004", "Usuario no encontrado"),
     ROLE_NOT_FOUND("ROL_001", "Rol no encontrado"),
     LOAN_TYPE_NOT_FOUND("LOAN_TYPE_001", "Tipo de prestamo no encontrado"),
