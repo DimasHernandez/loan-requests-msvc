@@ -14,16 +14,16 @@ spring:
 adapter:
   restconsumer:
     timeout: 5000
-    url: "${URL_AUTH_MSVC:http://localhost:8080}"
+    url: ${URL_AUTH_MSVC:http://localhost:8080}
   sqs:
-    region: "us-east-2"
-    queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-application-status-queue"
+    region: "${AWS_REGION:us-east-2}"
+    queueUrl: "${LOAN_QUEUE_STATUS_MANUAL_FLOW:https://sqs.us-east-2.amazonaws.com/881799718010/loan-application-status-queue}"
   sqsdebtcalculate:
-    region: "us-east-2"
-    queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-validation-requests-debt-capacity-queue"
+    region: "${AWS_REGION:us-east-2}"
+    queueUrl: "${DEBT_CALCULATE_QUEUE_AUTOMATIC_FLOW:https://sqs.us-east-2.amazonaws.com/881799718010/loan-validation-requests-debt-capacity-queue}"
   sqsapprovedloanreports:
-    region: "us-east-2"
-    queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/approved-loan-applications-report-queue"
+    region: "${AWS_REGION:us-east-2}"
+    queueUrl: "${LOAN_APPROVED_QUEUE_REPORTS:https://sqs.us-east-2.amazonaws.com/881799718010/approved-loan-applications-report-queue}"
 management:
   health:
     circuitbreakers:
@@ -71,16 +71,21 @@ adapters:
     schema: "${LOAN_MSVC_DB_SCHEMA:public}"
     username: "${LOAN_MSVC_DB_USERNAME:admin}"
     password: "${LOAN_MSVC_DB_PASSWORD:@admin1}"
+    sslMode: ${AUTH_MSVC_DB_SSLMODE:disable}
 security:
   jwt:
-    secretKey: "${SUPER_SECRET_KEY:\"VC_ayQoxqq_7BcqwcYplfPc5Au38nbm8Z_u5ReEHVE0=\"\
-      }"
+    secretKey: "${SUPER_SECRET_KEY:VC_ayQoxqq_7BcqwcYplfPc5Au38nbm8Z_u5ReEHVE0=}"
 entrypoint:
   sqs:
-    region: "us-east-2"
+    region: "${AWS_REGION:us-east-2}"
 #    endpoint: "http://localhost:4566"
-    queueUrl: "https://sqs.us-east-2.amazonaws.com/881799718010/loan-validation-results-debt-capacity-queue"
+    queueUrl: "${DEBT_CALCULATE_QUEUE_AUTOMATIC_FLOW_RESULTS:https://sqs.us-east-2.amazonaws.com/881799718010/loan-validation-results-debt-capacity-queue}"
     waitTimeSeconds: 20
     maxNumberOfMessages: 10
     visibilityTimeoutSeconds: 10
     numberOfThreads: 1
+aws:
+  region: "${AWS_REGION:us-east-2}"
+  user: "${USER_AWS:user-request-msvc-loan23ww}"
+  accessKey: "${AWS_ACCESS_KEY_ID}"
+  secretKey: "${AWS_SECRET_ACCESS_KEY}"
